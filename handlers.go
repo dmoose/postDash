@@ -8,14 +8,14 @@ import (
 	"strconv"
 )
 
-func postEventHandler(hub *Hub, logWriter io.Writer) http.HandlerFunc {
+func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
 		}
 
-		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1MB max
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
 			http.Error(w, "read error", http.StatusBadRequest)
 			return
@@ -27,10 +27,15 @@ func postEventHandler(hub *Hub, logWriter io.Writer) http.HandlerFunc {
 			return
 		}
 
-		// Tee to log if configured
+		// Tee to log
 		if logWriter != nil {
 			line, _ := json.Marshal(evt)
 			fmt.Fprintf(logWriter, "%s\n", line)
+		}
+
+		// Check notification rules
+		if notifier != nil {
+			go notifier.Check(*evt)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -46,12 +51,7 @@ func sseStreamHandler(hub *Hub) http.HandlerFunc {
 			return
 		}
 
-		filter := Filter{
-			Source:  r.URL.Query().Get("source"),
-			Action:  r.URL.Query().Get("action"),
-			AgentID: r.URL.Query().Get("agent_id"),
-		}
-
+		filter := filterFromQuery(r)
 		client := hub.Subscribe(filter)
 		defer hub.Unsubscribe(client)
 
@@ -87,15 +87,20 @@ func recentHandler(hub *Hub) http.HandlerFunc {
 			}
 		}
 
-		filter := Filter{
-			Source:  r.URL.Query().Get("source"),
-			Action:  r.URL.Query().Get("action"),
-			AgentID: r.URL.Query().Get("agent_id"),
-		}
-
+		filter := filterFromQuery(r)
 		events := hub.Recent(n, filter)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		json.NewEncoder(w).Encode(events)
+	}
+}
+
+func filterFromQuery(r *http.Request) Filter {
+	return Filter{
+		Source:  r.URL.Query().Get("source"),
+		Channel: r.URL.Query().Get("channel"),
+		Action:  r.URL.Query().Get("action"),
+		Level:   r.URL.Query().Get("level"),
+		AgentID: r.URL.Query().Get("agent_id"),
 	}
 }

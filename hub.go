@@ -8,12 +8,15 @@ import (
 
 // Event is the structured payload received and relayed.
 type Event struct {
-	Seq     uint64         `json:"seq"`
-	Source  string         `json:"source"`
-	Action  string         `json:"action,omitempty"`
-	AgentID string         `json:"agent_id,omitempty"`
-	Data    map[string]any `json:"data,omitempty"`
-	TS      time.Time      `json:"ts"`
+	Seq        uint64         `json:"seq"`
+	Source     string         `json:"source"`
+	Channel    string         `json:"channel,omitempty"`
+	Action     string         `json:"action,omitempty"`
+	Level      string         `json:"level,omitempty"` // info, warn, error, debug
+	AgentID    string         `json:"agent_id,omitempty"`
+	DurationMS *int64         `json:"duration_ms,omitempty"`
+	Data       map[string]any `json:"data,omitempty"`
+	TS         time.Time      `json:"ts"`
 }
 
 // Hub manages the event ring buffer and client fan-out.
@@ -34,7 +37,9 @@ type Client struct {
 // Filter controls which events a client receives.
 type Filter struct {
 	Source  string
+	Channel string
 	Action  string
+	Level   string
 	AgentID string
 }
 
@@ -42,7 +47,13 @@ func (f Filter) matches(e Event) bool {
 	if f.Source != "" && e.Source != f.Source {
 		return false
 	}
+	if f.Channel != "" && e.Channel != f.Channel {
+		return false
+	}
 	if f.Action != "" && e.Action != f.Action {
+		return false
+	}
+	if f.Level != "" && e.Level != f.Level {
 		return false
 	}
 	if f.AgentID != "" && e.AgentID != f.AgentID {
@@ -73,27 +84,26 @@ func (h *Hub) Publish(raw json.RawMessage) (*Event, error) {
 	if evt.TS.IsZero() {
 		evt.TS = time.Now()
 	}
+	if evt.Level == "" {
+		evt.Level = "info"
+	}
 
-	// Ring buffer
 	if len(h.ring) >= h.maxSize {
 		h.ring = h.ring[1:]
 	}
 	h.ring = append(h.ring, evt)
 
-	// Snapshot clients under lock
 	clients := make([]*Client, 0, len(h.clients))
 	for c := range h.clients {
 		clients = append(clients, c)
 	}
 	h.mu.Unlock()
 
-	// Fan out without holding the lock
 	for _, c := range clients {
 		if c.filter.matches(evt) {
 			select {
 			case c.ch <- evt:
 			default:
-				// Client is slow, drop event
 			}
 		}
 	}
@@ -133,7 +143,6 @@ func (h *Hub) Recent(n int, f Filter) []Event {
 		}
 	}
 
-	// Reverse to chronological order
 	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
 		result[i], result[j] = result[j], result[i]
 	}

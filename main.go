@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 //go:embed static
@@ -16,11 +17,36 @@ var staticFS embed.FS
 
 func main() {
 	port := flag.Int("port", 6060, "listen port")
+	bind := flag.String("bind", "127.0.0.1", "bind address (use 0.0.0.0 for network access)")
+	token := flag.String("token", "", "require Bearer token for POST /events")
 	logFile := flag.String("log", "", "optional JSONL log file path")
 	bufSize := flag.Int("buffer", 1000, "ring buffer size")
+	configFile := flag.String("config", "", "config file path (eventrelay.yaml)")
 	flag.Parse()
 
+	// Load config if provided
+	var cfg *Config
+	if *configFile != "" {
+		var err error
+		cfg, err = LoadConfig(*configFile)
+		if err != nil {
+			log.Fatalf("loading config: %v", err)
+		}
+		log.Printf("Loaded config from %s (%d notification rules)", *configFile, len(cfg.Notify))
+	}
+
 	hub := NewHub(*bufSize)
+
+	// Set up notifier if config has rules
+	var notifier *Notifier
+	if cfg != nil && len(cfg.Notify) > 0 {
+		var err error
+		notifier, err = NewNotifier(cfg.Notify)
+		if err != nil {
+			log.Fatalf("setting up notifications: %v", err)
+		}
+		log.Printf("Notifications enabled: %d rules", len(cfg.Notify))
+	}
 
 	var logWriter io.Writer
 	if *logFile != "" {
@@ -34,17 +60,35 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/events", postEventHandler(hub, logWriter))
+
+	// POST handler with optional auth and notification
+	postHandler := postEventHandler(hub, logWriter, notifier)
+	if *token != "" {
+		postHandler = requireToken(*token, postHandler)
+		log.Printf("Token auth enabled for POST /events")
+	}
+	mux.HandleFunc("/events", postHandler)
 	mux.HandleFunc("/events/stream", sseStreamHandler(hub))
 	mux.HandleFunc("/events/recent", recentHandler(hub))
 
-	// Serve embedded static files at root
 	staticSub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(staticSub)))
 
-	addr := fmt.Sprintf(":%d", *port)
-	log.Printf("eventrelay listening on http://localhost%s", addr)
+	addr := fmt.Sprintf("%s:%d", *bind, *port)
+	log.Printf("eventrelay listening on http://%s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
+	}
+}
+
+// requireToken wraps a handler to require a Bearer token.
+func requireToken(token string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if !strings.HasPrefix(auth, "Bearer ") || strings.TrimPrefix(auth, "Bearer ") != token {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
 	}
 }

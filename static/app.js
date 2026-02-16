@@ -4,7 +4,9 @@ const emptyMsg = document.getElementById('empty-msg');
 const btnPause = document.getElementById('btn-pause');
 const btnClear = document.getElementById('btn-clear');
 const fSource = document.getElementById('f-source');
+const fChannel = document.getElementById('f-channel');
 const fAction = document.getElementById('f-action');
+const fLevel = document.getElementById('f-level');
 const fAgent = document.getElementById('f-agent');
 
 let count = 0;
@@ -14,7 +16,9 @@ let es = null;
 function buildStreamURL() {
   const params = new URLSearchParams();
   if (fSource.value) params.set('source', fSource.value);
+  if (fChannel.value) params.set('channel', fChannel.value);
   if (fAction.value) params.set('action', fAction.value);
+  if (fLevel.value) params.set('level', fLevel.value);
   if (fAgent.value) params.set('agent_id', fAgent.value);
   const qs = params.toString();
   return '/events/stream' + (qs ? '?' + qs : '');
@@ -25,8 +29,7 @@ function connect() {
   es = new EventSource(buildStreamURL());
   es.onmessage = (e) => {
     if (paused) return;
-    const evt = JSON.parse(e.data);
-    addEvent(evt);
+    addEvent(JSON.parse(e.data));
   };
   es.onerror = () => {
     setTimeout(connect, 2000);
@@ -39,27 +42,28 @@ function addEvent(evt) {
   countBadge.textContent = count;
 
   const div = document.createElement('div');
-  div.className = 'event';
+  const level = evt.level || 'info';
+  div.className = 'event level-' + level;
   div.onclick = () => div.classList.toggle('expanded');
 
   const ts = new Date(evt.ts).toLocaleTimeString();
-  const agent = evt.agent_id ? `<span class="agent">${esc(evt.agent_id)}</span>` : '';
-  const action = evt.action ? `<span class="action">${esc(evt.action)}</span>` : '';
+  const parts = [`<span class="source">${esc(evt.source || '?')}</span>`];
+
+  if (evt.channel) parts.push(`<span class="channel">${esc(evt.channel)}</span>`);
+  if (evt.action) parts.push(`<span class="action">${esc(evt.action)}</span>`);
+  parts.push(`<span class="level">${esc(level)}</span>`);
+  if (evt.agent_id) parts.push(`<span class="agent">${esc(evt.agent_id)}</span>`);
+  if (evt.duration_ms != null) parts.push(`<span class="duration">${evt.duration_ms}ms</span>`);
+  parts.push(`<span class="time">#${evt.seq} ${ts}</span>`);
 
   div.innerHTML = `
-    <div class="meta">
-      <span class="source">${esc(evt.source || '?')}</span>
-      ${action}
-      ${agent}
-      <span class="time">#${evt.seq} ${ts}</span>
-    </div>
+    <div class="meta">${parts.join(' ')}</div>
     <div class="detail">${esc(JSON.stringify(evt.data || {}, null, 2))}</div>
   `;
 
-  feed.insertBefore(div, feed.firstChild);
+  feed.insertBefore(div, emptyMsg.nextSibling);
 
-  // Cap displayed events
-  while (feed.children.length > 500) {
+  while (feed.children.length > 501) {
     feed.removeChild(feed.lastChild);
   }
 }
@@ -70,30 +74,26 @@ function esc(s) {
   return d.innerHTML;
 }
 
-// Pause/resume
 btnPause.onclick = () => {
   paused = !paused;
   btnPause.textContent = paused ? 'Resume' : 'Pause';
   btnPause.classList.toggle('active', paused);
 };
 
-// Clear feed
 btnClear.onclick = () => {
-  feed.innerHTML = '';
+  feed.querySelectorAll('.event').forEach(e => e.remove());
   count = 0;
   countBadge.textContent = 0;
 };
 
-// Reconnect on filter change
 let filterTimer;
-[fSource, fAction, fAgent].forEach(input => {
+[fSource, fChannel, fAction, fLevel, fAgent].forEach(input => {
   input.addEventListener('input', () => {
     clearTimeout(filterTimer);
     filterTimer = setTimeout(connect, 300);
   });
 });
 
-// Load recent events then connect to stream
 fetch('/events/recent?n=50')
   .then(r => r.json())
   .then(events => {

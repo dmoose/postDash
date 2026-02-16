@@ -1,0 +1,35 @@
+# eventrelay configuration
+# Usage: eventrelay --config eventrelay.yaml
+
+notify:
+  # Send errors to Slack
+  - name: errors to slack
+    match:
+      level: error
+    slack:
+      webhook_url: https://hooks.slack.com/services/T00/B00/xxx
+
+  # Send CI deploy events to Discord
+  - name: deploys to discord
+    match:
+      source: ci
+      action: deploy
+    discord:
+      webhook_url: https://discord.com/api/webhooks/xxx/yyy
+
+  # Forward all llmshadow events to another service
+  - name: llmshadow webhook
+    match:
+      source: llmshadow
+    webhook:
+      url: https://example.com/hooks/llmshadow
+      headers:
+        Authorization: Bearer mytoken
+
+  # Alert on agent errors
+  - name: agent errors
+    match:
+      level: error
+      source: llmshadow
+    slack:
+      webhook_url: https://hooks.slack.com/services/T00/B00/xxx

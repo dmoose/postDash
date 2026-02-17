@@ -19,6 +19,16 @@ type Event struct {
 	TS         time.Time      `json:"ts"`
 }
 
+// HubStats holds aggregate counters for the dashboard.
+type HubStats struct {
+	TotalEvents    uint64            `json:"total_events"`
+	ClientCount    int               `json:"client_count"`
+	BySource       map[string]uint64 `json:"by_source"`
+	ByLevel        map[string]uint64 `json:"by_level"`
+	ByChannel      map[string]uint64 `json:"by_channel"`
+	RecentRate     float64           `json:"events_per_second"` // over last 10s window
+}
+
 // Hub manages the event ring buffer and client fan-out.
 type Hub struct {
 	mu      sync.RWMutex
@@ -26,6 +36,11 @@ type Hub struct {
 	ring    []Event
 	maxSize int
 	clients map[*Client]bool
+
+	// Stats counters
+	bySource  map[string]uint64
+	byLevel   map[string]uint64
+	byChannel map[string]uint64
 }
 
 // Client is a connected SSE subscriber.
@@ -65,9 +80,12 @@ func (f Filter) matches(e Event) bool {
 // NewHub creates a Hub with the given ring buffer size.
 func NewHub(maxSize int) *Hub {
 	return &Hub{
-		ring:    make([]Event, 0, maxSize),
-		maxSize: maxSize,
-		clients: make(map[*Client]bool),
+		ring:      make([]Event, 0, maxSize),
+		maxSize:   maxSize,
+		clients:   make(map[*Client]bool),
+		bySource:  make(map[string]uint64),
+		byLevel:   make(map[string]uint64),
+		byChannel: make(map[string]uint64),
 	}
 }
 
@@ -93,6 +111,15 @@ func (h *Hub) Publish(raw json.RawMessage) (*Event, error) {
 	}
 	h.ring = append(h.ring, evt)
 
+	// Update counters
+	if evt.Source != "" {
+		h.bySource[evt.Source]++
+	}
+	h.byLevel[evt.Level]++
+	if evt.Channel != "" {
+		h.byChannel[evt.Channel]++
+	}
+
 	clients := make([]*Client, 0, len(h.clients))
 	for c := range h.clients {
 		clients = append(clients, c)
@@ -109,6 +136,41 @@ func (h *Hub) Publish(raw json.RawMessage) (*Event, error) {
 	}
 
 	return &evt, nil
+}
+
+// Stats returns current aggregate counters.
+func (h *Hub) Stats() HubStats {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	stats := HubStats{
+		TotalEvents: h.seq,
+		ClientCount: len(h.clients),
+		BySource:    copyMap(h.bySource),
+		ByLevel:     copyMap(h.byLevel),
+		ByChannel:   copyMap(h.byChannel),
+	}
+
+	// Calculate rate from ring buffer (events in last 10s)
+	cutoff := time.Now().Add(-10 * time.Second)
+	var recent int
+	for i := len(h.ring) - 1; i >= 0; i-- {
+		if h.ring[i].TS.Before(cutoff) {
+			break
+		}
+		recent++
+	}
+	stats.RecentRate = float64(recent) / 10.0
+
+	return stats
+}
+
+func copyMap(m map[string]uint64) map[string]uint64 {
+	c := make(map[string]uint64, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
 }
 
 // Subscribe creates a new client with the given filter.

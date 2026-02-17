@@ -95,6 +95,14 @@ func recentHandler(hub *Hub) http.HandlerFunc {
 	}
 }
 
+func statsHandler(hub *Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(hub.Stats())
+	}
+}
+
 func filterFromQuery(r *http.Request) Filter {
 	return Filter{
 		Source:  r.URL.Query().Get("source"),

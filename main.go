@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 //go:embed static
@@ -22,7 +24,22 @@ func main() {
 	logFile := flag.String("log", "", "optional JSONL log file path")
 	bufSize := flag.Int("buffer", 1000, "ring buffer size")
 	configFile := flag.String("config", "", "config file path (eventrelay.yaml)")
+	tuiMode := flag.Bool("tui", false, "connect to a running eventrelay as a TUI dashboard")
+	tuiURL := flag.String("url", "", "eventrelay server URL for TUI mode (default http://localhost:<port>)")
 	flag.Parse()
+
+	// TUI client mode — connect to an existing server
+	if *tuiMode {
+		url := *tuiURL
+		if url == "" {
+			url = fmt.Sprintf("http://localhost:%d", *port)
+		}
+		p := tea.NewProgram(newTUIModel(url), tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	// Load config if provided
 	var cfg *Config
@@ -70,6 +87,7 @@ func main() {
 	mux.HandleFunc("/events", postHandler)
 	mux.HandleFunc("/events/stream", sseStreamHandler(hub))
 	mux.HandleFunc("/events/recent", recentHandler(hub))
+	mux.HandleFunc("/events/stats", statsHandler(hub))
 
 	staticSub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(staticSub)))

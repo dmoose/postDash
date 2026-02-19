@@ -4,6 +4,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"sync"
 	"time"
@@ -12,13 +13,13 @@ import (
 // Event is the payload sent to the relay.
 type Event struct {
 	Source     string         `json:"source"`
-	Channel   string         `json:"channel,omitempty"`
-	Action    string         `json:"action,omitempty"`
-	Level     string         `json:"level,omitempty"`
-	AgentID   string         `json:"agent_id,omitempty"`
-	DurationMS *int64        `json:"duration_ms,omitempty"`
-	Data      map[string]any `json:"data,omitempty"`
-	TS        time.Time      `json:"ts"`
+	Channel    string         `json:"channel,omitempty"`
+	Action     string         `json:"action,omitempty"`
+	Level      string         `json:"level,omitempty"`
+	AgentID    string         `json:"agent_id,omitempty"`
+	DurationMS *int64         `json:"duration_ms,omitempty"`
+	Data       map[string]any `json:"data,omitempty"`
+	TS         time.Time      `json:"ts"`
 }
 
 // Client sends events to an eventrelay server.
@@ -81,12 +82,8 @@ func (c *Client) Timed(action string, data map[string]any) func(map[string]any) 
 	start := time.Now()
 	return func(extra map[string]any) {
 		merged := make(map[string]any)
-		for k, v := range data {
-			merged[k] = v
-		}
-		for k, v := range extra {
-			merged[k] = v
-		}
+		maps.Copy(merged, data)
+		maps.Copy(merged, extra)
 		ms := time.Since(start).Milliseconds()
 		c.EmitWith(Event{
 			Action:     action,
@@ -103,9 +100,7 @@ func (c *Client) Flush() {
 }
 
 func (c *Client) send(evt Event) {
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		body, err := json.Marshal(evt)
 		if err != nil {
 			return
@@ -115,5 +110,5 @@ func (c *Client) send(evt Event) {
 			return
 		}
 		resp.Body.Close()
-	}()
+	})
 }

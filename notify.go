@@ -11,33 +11,54 @@ import (
 
 // Notifier evaluates events against rules and sends notifications.
 type Notifier struct {
-	rules  []NotifyRule
-	client *http.Client
+	rules    []NotifyRule
+	client   *http.Client
+	dbStores map[int]*DBStore // keyed by rule index
 }
 
 // NewNotifier creates a Notifier from the given rules.
 func NewNotifier(rules []NotifyRule) (*Notifier, error) {
+	n := &Notifier{
+		rules:    rules,
+		client:   &http.Client{Timeout: 5 * time.Second},
+		dbStores: make(map[int]*DBStore),
+	}
+
 	for i, r := range rules {
-		if r.Webhook == nil && r.Slack == nil && r.Discord == nil {
+		hasTarget := r.Webhook != nil || r.Slack != nil || r.Discord != nil || r.Database != nil
+		if !hasTarget {
 			return nil, fmt.Errorf("rule %d (%s): no notification target configured", i, r.Name)
 		}
+		if r.Database != nil {
+			store, err := OpenDBStore(r.Database)
+			if err != nil {
+				return nil, fmt.Errorf("rule %d (%s): %w", i, r.Name, err)
+			}
+			n.dbStores[i] = store
+			log.Printf("Database target ready: %s (%s → %s)", r.Name, r.Database.Driver, r.Database.DSN)
+		}
 	}
-	return &Notifier{
-		rules:  rules,
-		client: &http.Client{Timeout: 5 * time.Second},
-	}, nil
+
+	return n, nil
+}
+
+// Close cleans up database connections.
+func (n *Notifier) Close() {
+	for _, store := range n.dbStores {
+		store.Close()
+	}
 }
 
 // Check evaluates an event against all rules and fires matching notifications.
 func (n *Notifier) Check(evt Event) {
-	for _, rule := range n.rules {
+	for i, rule := range n.rules {
 		if rule.Match.Matches(evt) {
-			n.fire(rule, evt)
+			n.fire(i, rule, evt)
 		}
 	}
 }
 
-func (n *Notifier) fire(rule NotifyRule, evt Event) {
+func (n *Notifier) fire(ruleIdx int, rule NotifyRule, evt Event) {
 	if rule.Webhook != nil {
 		n.fireWebhook(rule.Webhook, evt)
 	}
@@ -46,6 +67,9 @@ func (n *Notifier) fire(rule NotifyRule, evt Event) {
 	}
 	if rule.Discord != nil {
 		n.fireDiscord(rule.Discord, evt)
+	}
+	if store, ok := n.dbStores[ruleIdx]; ok {
+		store.Insert(evt)
 	}
 }
 

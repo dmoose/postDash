@@ -320,7 +320,7 @@ func (m tuiModel) matchesFilter(evt Event) bool {
 		return true
 	}
 
-	for _, part := range strings.Fields(m.filterStr) {
+	for part := range strings.FieldsSeq(m.filterStr) {
 		kv := strings.SplitN(part, ":", 2)
 		if len(kv) == 2 {
 			key, val := kv[0], strings.ToLower(kv[1])

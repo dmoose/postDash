@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"maps"
 	"sync"
 	"time"
 )
@@ -21,12 +22,12 @@ type Event struct {
 
 // HubStats holds aggregate counters for the dashboard.
 type HubStats struct {
-	TotalEvents    uint64            `json:"total_events"`
-	ClientCount    int               `json:"client_count"`
-	BySource       map[string]uint64 `json:"by_source"`
-	ByLevel        map[string]uint64 `json:"by_level"`
-	ByChannel      map[string]uint64 `json:"by_channel"`
-	RecentRate     float64           `json:"events_per_second"` // over last 10s window
+	TotalEvents uint64            `json:"total_events"`
+	ClientCount int               `json:"client_count"`
+	BySource    map[string]uint64 `json:"by_source"`
+	ByLevel     map[string]uint64 `json:"by_level"`
+	ByChannel   map[string]uint64 `json:"by_channel"`
+	RecentRate  float64           `json:"events_per_second"` // over last 10s window
 }
 
 // Hub manages the event ring buffer and client fan-out.
@@ -167,9 +168,7 @@ func (h *Hub) Stats() HubStats {
 
 func copyMap(m map[string]uint64) map[string]uint64 {
 	c := make(map[string]uint64, len(m))
-	for k, v := range m {
-		c[k] = v
-	}
+	maps.Copy(c, m)
 	return c
 }
 

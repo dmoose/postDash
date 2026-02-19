@@ -63,6 +63,7 @@ func main() {
 			log.Fatalf("setting up notifications: %v", err)
 		}
 		log.Printf("Notifications enabled: %d rules", len(cfg.Notify))
+		defer notifier.Close()
 	}
 
 	var logWriter io.Writer

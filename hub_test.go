@@ -35,7 +35,7 @@ func TestPublishAndRecent(t *testing.T) {
 
 func TestRingBufferOverflow(t *testing.T) {
 	hub := NewHub(3)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		raw := json.RawMessage(`{"source":"test","action":"` + string(rune('a'+i)) + `"}`)
 		hub.Publish(raw)
 	}

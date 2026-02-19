@@ -1,0 +1,15 @@
+{
+  "name": "eventrelay",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for eventrelay — real-time event streaming",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/test.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

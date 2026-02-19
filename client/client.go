@@ -26,10 +26,11 @@ type Event struct {
 // All methods are safe for concurrent use.
 // If URL is empty, all operations are no-ops.
 type Client struct {
-	url    string
-	source string
-	http   *http.Client
-	wg     sync.WaitGroup
+	url     string
+	source  string
+	channel string
+	http    *http.Client
+	wg      sync.WaitGroup
 }
 
 // New creates a Client. If url is empty, returns a no-op client.
@@ -41,17 +42,47 @@ func New(url, source string) *Client {
 	}
 }
 
-// Emit sends an event. Fire-and-forget — non-blocking, errors silently dropped.
+// WithChannel returns a new Client that tags all events with the given channel.
+func (c *Client) WithChannel(channel string) *Client {
+	return &Client{
+		url:     c.url,
+		source:  c.source,
+		channel: channel,
+		http:    c.http,
+	}
+}
+
+// Emit sends an info-level event. Fire-and-forget — non-blocking, errors silently dropped.
 func (c *Client) Emit(action string, data map[string]any) {
+	c.emit("info", action, data)
+}
+
+// EmitError sends an error-level event.
+func (c *Client) EmitError(action string, data map[string]any) {
+	c.emit("error", action, data)
+}
+
+// EmitWarn sends a warn-level event.
+func (c *Client) EmitWarn(action string, data map[string]any) {
+	c.emit("warn", action, data)
+}
+
+// EmitDebug sends a debug-level event.
+func (c *Client) EmitDebug(action string, data map[string]any) {
+	c.emit("debug", action, data)
+}
+
+func (c *Client) emit(level, action string, data map[string]any) {
 	if c.url == "" {
 		return
 	}
 	c.send(Event{
-		Source: c.source,
-		Action: action,
-		Level:  "info",
-		Data:   data,
-		TS:     time.Now(),
+		Source:  c.source,
+		Channel: c.channel,
+		Action:  action,
+		Level:   level,
+		Data:    data,
+		TS:      time.Now(),
 	})
 }
 
@@ -62,6 +93,9 @@ func (c *Client) EmitWith(evt Event) {
 	}
 	if evt.Source == "" {
 		evt.Source = c.source
+	}
+	if evt.Channel == "" {
+		evt.Channel = c.channel
 	}
 	if evt.TS.IsZero() {
 		evt.TS = time.Now()

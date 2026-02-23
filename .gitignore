@@ -27,3 +27,7 @@ coverage.out
 # Generated sites
 output/
 llmshadow
+__pycache__/
+*.pyc
+node_modules/
+dist/

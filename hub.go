@@ -166,6 +166,44 @@ func (h *Hub) Stats() HubStats {
 	return stats
 }
 
+// RateHistory returns event counts per bucket over the last duration.
+// Returns buckets number of samples, each covering duration/buckets time.
+func (h *Hub) RateHistory(duration time.Duration, buckets int) []int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	now := time.Now()
+	bucketSize := duration / time.Duration(buckets)
+	counts := make([]int, buckets)
+
+	for i := len(h.ring) - 1; i >= 0; i-- {
+		age := now.Sub(h.ring[i].TS)
+		if age > duration {
+			break
+		}
+		idx := buckets - 1 - int(age/bucketSize)
+		if idx < 0 {
+			idx = 0
+		}
+		if idx >= buckets {
+			idx = buckets - 1
+		}
+		counts[idx]++
+	}
+	return counts
+}
+
+// Channels returns a list of all channels that have received events.
+func (h *Hub) Channels() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	channels := make([]string, 0, len(h.byChannel))
+	for ch := range h.byChannel {
+		channels = append(channels, ch)
+	}
+	return channels
+}
+
 func copyMap(m map[string]uint64) map[string]uint64 {
 	c := make(map[string]uint64, len(m))
 	maps.Copy(c, m)

@@ -89,6 +89,8 @@ func main() {
 	mux.HandleFunc("/events/stream", sseStreamHandler(hub))
 	mux.HandleFunc("/events/recent", recentHandler(hub))
 	mux.HandleFunc("/events/stats", statsHandler(hub))
+	mux.HandleFunc("/events/rate", rateHistoryHandler(hub))
+	mux.HandleFunc("/events/channels", channelsHandler(hub))
 
 	staticSub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(staticSub)))

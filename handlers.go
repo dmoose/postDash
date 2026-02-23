@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.HandlerFunc {
@@ -92,6 +93,36 @@ func recentHandler(hub *Hub) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		json.NewEncoder(w).Encode(events)
+	}
+}
+
+func rateHistoryHandler(hub *Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Default: 5 minutes, 60 buckets (5s each)
+		buckets := 60
+		if s := r.URL.Query().Get("buckets"); s != "" {
+			if v, err := strconv.Atoi(s); err == nil && v > 0 && v <= 300 {
+				buckets = v
+			}
+		}
+		minutes := 5
+		if s := r.URL.Query().Get("minutes"); s != "" {
+			if v, err := strconv.Atoi(s); err == nil && v > 0 {
+				minutes = v
+			}
+		}
+		counts := hub.RateHistory(time.Duration(minutes)*time.Minute, buckets)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(counts)
+	}
+}
+
+func channelsHandler(hub *Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(hub.Channels())
 	}
 }
 

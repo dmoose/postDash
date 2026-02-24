@@ -23,12 +23,19 @@ func main() {
 	token := flag.String("token", "", "require Bearer token for POST /events")
 	logFile := flag.String("log", "", "optional JSONL log file path")
 	bufSize := flag.Int("buffer", 1000, "ring buffer size")
-	configFile := flag.String("config", "", "config file path (eventrelay.yaml)")
+	configFile := flag.String("config", defaultConfigPath(), "config file path")
 	tuiMode := flag.Bool("tui", false, "connect to a running eventrelay as a TUI dashboard")
-	tuiURL := flag.String("url", "", "eventrelay server URL for TUI mode (default http://localhost:<port>)")
+	tuiURL := flag.String("url", "", "eventrelay server URL for TUI mode")
+	statusMode := flag.Bool("status", false, "check if eventrelay is running")
 	flag.Parse()
 
-	// TUI client mode — connect to an existing server
+	// Status check mode
+	if *statusMode {
+		runStatus(*port)
+		return
+	}
+
+	// TUI client mode
 	if *tuiMode {
 		url := *tuiURL
 		if url == "" {
@@ -41,20 +48,35 @@ func main() {
 		return
 	}
 
-	// Load config if provided
+	// Server mode — check for existing instance
+	pidPath := DefaultPIDPath()
+	if pid, running, _ := ReadPIDFile(pidPath); running {
+		log.Fatalf("eventrelay already running (pid %d). Use --status to check, or remove %s", pid, pidPath)
+	}
+	if CheckPort(*port) {
+		log.Fatalf("port %d already in use", *port)
+	}
+
+	pidFile, err := WritePIDFile(pidPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pidFile.Remove()
+
+	// Load config
 	var cfg *Config
 	if *configFile != "" {
-		var err error
-		cfg, err = LoadConfig(*configFile)
-		if err != nil {
-			log.Fatalf("loading config: %v", err)
+		if _, err := os.Stat(*configFile); err == nil {
+			cfg, err = LoadConfig(*configFile)
+			if err != nil {
+				log.Fatalf("loading config: %v", err)
+			}
+			log.Printf("Loaded config from %s (%d notification rules)", *configFile, len(cfg.Notify))
 		}
-		log.Printf("Loaded config from %s (%d notification rules)", *configFile, len(cfg.Notify))
 	}
 
 	hub := NewHub(*bufSize)
 
-	// Set up notifier if config has rules
 	var notifier *Notifier
 	if cfg != nil && len(cfg.Notify) > 0 {
 		var err error
@@ -79,7 +101,6 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// POST handler with optional auth and notification
 	postHandler := postEventHandler(hub, logWriter, notifier)
 	if *token != "" {
 		postHandler = requireToken(*token, postHandler)
@@ -96,13 +117,41 @@ func main() {
 	mux.Handle("/", http.FileServer(http.FS(staticSub)))
 
 	addr := fmt.Sprintf("%s:%d", *bind, *port)
-	log.Printf("eventrelay listening on http://%s", addr)
+	log.Printf("eventrelay listening on http://%s (pid %d)", addr, os.Getpid())
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// requireToken wraps a handler to require a Bearer token.
+func runStatus(port int) {
+	pidPath := DefaultPIDPath()
+	pid, running, _ := ReadPIDFile(pidPath)
+
+	if running {
+		fmt.Printf("eventrelay is running (pid %d)\n", pid)
+		if CheckPort(port) {
+			fmt.Printf("  listening on port %d\n", port)
+			fmt.Printf("  dashboard: http://localhost:%d\n", port)
+		}
+	} else {
+		fmt.Println("eventrelay is not running")
+		if CheckPort(port) {
+			fmt.Printf("  (but port %d is in use by another process)\n", port)
+		}
+	}
+}
+
+func defaultConfigPath() string {
+	if dir := os.Getenv("EVENTRELAY_CONFIG_DIR"); dir != "" {
+		return dir + "/eventrelay.yaml"
+	}
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		return home + "/.config/eventrelay/eventrelay.yaml"
+	}
+	return ""
+}
+
 func requireToken(token string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")

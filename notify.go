@@ -45,7 +45,7 @@ func NewNotifier(rules []NotifyRule) (*Notifier, error) {
 // Close cleans up database connections.
 func (n *Notifier) Close() {
 	for _, store := range n.dbStores {
-		store.Close()
+		_ = store.Close()
 	}
 }
 
@@ -75,7 +75,7 @@ func (n *Notifier) fire(ruleIdx int, rule NotifyRule, evt Event) {
 
 func (n *Notifier) fireWebhook(wh *Webhook, evt Event) {
 	body, _ := json.Marshal(evt)
-	req, err := http.NewRequest("POST", wh.URL, bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, wh.URL, bytes.NewReader(body))
 	if err != nil {
 		log.Printf("webhook error: %v", err)
 		return
@@ -89,7 +89,7 @@ func (n *Notifier) fireWebhook(wh *Webhook, evt Event) {
 		log.Printf("webhook %s error: %v", wh.URL, err)
 		return
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func (n *Notifier) fireSlack(cfg *SlackConf, evt Event) {
@@ -102,7 +102,7 @@ func (n *Notifier) fireSlack(cfg *SlackConf, evt Event) {
 		log.Printf("slack error: %v", err)
 		return
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func (n *Notifier) fireDiscord(cfg *DiscordConf, evt Event) {
@@ -115,7 +115,7 @@ func (n *Notifier) fireDiscord(cfg *DiscordConf, evt Event) {
 		log.Printf("discord error: %v", err)
 		return
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
 
 func formatNotification(evt Event) string {

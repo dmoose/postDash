@@ -181,10 +181,7 @@ func (h *Hub) RateHistory(duration time.Duration, buckets int) []int {
 		if age > duration {
 			break
 		}
-		idx := buckets - 1 - int(age/bucketSize)
-		if idx < 0 {
-			idx = 0
-		}
+		idx := max(buckets-1-int(age/bucketSize), 0)
 		if idx >= buckets {
 			idx = buckets - 1
 		}

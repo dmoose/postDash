@@ -34,7 +34,7 @@ func OpenDBStore(cfg *DatabaseConf) (*DBStore, error) {
 	}
 
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("connecting to database: %w", err)
 	}
 
@@ -54,14 +54,14 @@ func OpenDBStore(cfg *DatabaseConf) (*DBStore, error) {
 	)`, table)
 
 	if _, err := db.Exec(createSQL); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("creating table: %w", err)
 	}
 
 	// Create indexes for common queries
 	for _, col := range []string{"source", "level", "channel", "ts"} {
 		idx := fmt.Sprintf("CREATE INDEX IF NOT EXISTS idx_%s_%s ON %s(%s)", table, col, table, col)
-		db.Exec(idx) // best-effort, some DBs may not support IF NOT EXISTS on indexes
+		_, _ = db.Exec(idx) // best-effort, some DBs may not support IF NOT EXISTS on indexes
 	}
 
 	return &DBStore{db: db, table: table}, nil

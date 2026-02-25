@@ -20,7 +20,7 @@ func TestDBStoreInsertAndQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	dur := int64(42)
 	store.Insert(Event{
@@ -45,18 +45,22 @@ func TestDBStoreInsertAndQuery(t *testing.T) {
 
 	// Verify by querying directly
 	db, _ := sql.Open("sqlite", dbPath)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM events").Scan(&count)
+	if err := db.QueryRow("SELECT COUNT(*) FROM events").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
 	if count != 2 {
 		t.Fatalf("expected 2 rows, got %d", count)
 	}
 
 	var source, level, action, dataStr string
 	var durationMS *int64
-	db.QueryRow("SELECT source, level, action, duration_ms, data FROM events WHERE seq = 1").
-		Scan(&source, &level, &action, &durationMS, &dataStr)
+	if err := db.QueryRow("SELECT source, level, action, duration_ms, data FROM events WHERE seq = 1").
+		Scan(&source, &level, &action, &durationMS, &dataStr); err != nil {
+		t.Fatal(err)
+	}
 
 	if source != "test" || level != "info" || action != "deploy" {
 		t.Errorf("unexpected values: source=%s level=%s action=%s", source, level, action)
@@ -66,13 +70,15 @@ func TestDBStoreInsertAndQuery(t *testing.T) {
 	}
 
 	var data map[string]any
-	json.Unmarshal([]byte(dataStr), &data)
+	_ = json.Unmarshal([]byte(dataStr), &data)
 	if data["env"] != "prod" {
 		t.Errorf("expected data.env=prod, got %v", data["env"])
 	}
 
 	// Test error row has no duration
-	db.QueryRow("SELECT duration_ms FROM events WHERE seq = 2").Scan(&durationMS)
+	if err := db.QueryRow("SELECT duration_ms FROM events WHERE seq = 2").Scan(&durationMS); err != nil {
+		t.Fatal(err)
+	}
 	if durationMS != nil {
 		t.Errorf("expected nil duration_ms for error event, got %v", *durationMS)
 	}
@@ -90,12 +96,12 @@ func TestDBStoreCustomTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	store.Insert(Event{Seq: 1, Source: "test", Level: "info", TS: time.Now()})
 
 	db, _ := sql.Open("sqlite", dbPath)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	var count int
 	err = db.QueryRow("SELECT COUNT(*) FROM audit_log").Scan(&count)
@@ -121,7 +127,7 @@ func TestDBStoreFileCreated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store.Close()
+	_ = store.Close()
 
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		t.Error("expected database file to be created")

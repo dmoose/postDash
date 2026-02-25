@@ -143,6 +143,6 @@ func (c *Client) send(evt Event) {
 		if err != nil {
 			return
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	})
 }

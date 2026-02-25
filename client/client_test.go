@@ -17,11 +17,11 @@ func TestClientEmit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var evt map[string]any
-		json.Unmarshal(body, &evt)
+		_ = json.Unmarshal(body, &evt)
 		mu.Lock()
 		received = append(received, evt)
 		mu.Unlock()
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
@@ -59,11 +59,11 @@ func TestClientTimed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var evt map[string]any
-		json.Unmarshal(body, &evt)
+		_ = json.Unmarshal(body, &evt)
 		mu.Lock()
 		received = append(received, evt)
 		mu.Unlock()
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
@@ -93,11 +93,11 @@ func TestSlogHandler(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var evt map[string]any
-		json.Unmarshal(body, &evt)
+		_ = json.Unmarshal(body, &evt)
 		mu.Lock()
 		received = append(received, evt)
 		mu.Unlock()
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 

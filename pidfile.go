@@ -31,7 +31,7 @@ func DefaultPIDPath() string {
 
 // WritePIDFile creates a PID file. Returns an error if another instance is running.
 func WritePIDFile(path string) (*PIDFile, error) {
-	os.MkdirAll(filepath.Dir(path), 0755)
+	_ = os.MkdirAll(filepath.Dir(path), 0755)
 
 	// Check if an existing PID file points to a running process
 	if data, err := os.ReadFile(path); err == nil {
@@ -45,7 +45,7 @@ func WritePIDFile(path string) (*PIDFile, error) {
 		}
 	}
 
-	if err := os.WriteFile(path, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0644); err != nil {
+	if err := os.WriteFile(path, fmt.Appendf(nil, "%d\n", os.Getpid()), 0644); err != nil {
 		return nil, fmt.Errorf("writing pid file: %w", err)
 	}
 	return &PIDFile{path: path}, nil
@@ -53,7 +53,7 @@ func WritePIDFile(path string) (*PIDFile, error) {
 
 // Remove cleans up the PID file.
 func (p *PIDFile) Remove() {
-	os.Remove(p.path)
+	_ = os.Remove(p.path)
 }
 
 // ReadPIDFile reads the PID from a pid file and checks if the process is running.
@@ -83,7 +83,7 @@ func CheckPort(port int) bool {
 	if err != nil {
 		return false
 	}
-	conn.Close()
+	_ = conn.Close()
 	return true
 }
 

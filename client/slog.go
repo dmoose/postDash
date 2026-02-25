@@ -43,7 +43,7 @@ func (h *SlogHandler) Handle(_ context.Context, r slog.Record) error {
 		return true
 	})
 
-	level := "info"
+	var level string
 	switch {
 	case r.Level >= slog.LevelError:
 		level = "error"

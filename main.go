@@ -69,7 +69,7 @@ func main() {
 		if _, err := os.Stat(*configFile); err == nil {
 			cfg, err = LoadConfig(*configFile)
 			if err != nil {
-				log.Fatalf("loading config: %v", err)
+				log.Fatalf("loading config: %v", err) //nolint:gocritic // fatal is intentional; pidFile cleanup is best-effort
 			}
 			log.Printf("Loaded config from %s (%d notification rules)", *configFile, len(cfg.Notify))
 		}
@@ -94,7 +94,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("opening log file: %v", err)
 		}
-		defer f.Close()
+		defer f.Close() //nolint:errcheck // best-effort log file close at shutdown
 		logWriter = f
 		log.Printf("Logging events to %s", *logFile)
 	}

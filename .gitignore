@@ -1,6 +1,6 @@
 # Binaries
 bin/
-/fastatic-build
+/eventrelay
 *.exe
 
 # IDE
@@ -24,10 +24,14 @@ Thumbs.db
 # Test output
 coverage.out
 
-# Generated sites
+# Generated / build artifacts
 output/
 llmshadow
 __pycache__/
 *.pyc
 node_modules/
 dist/
+
+# Database files
+*.db
+*.sqlite

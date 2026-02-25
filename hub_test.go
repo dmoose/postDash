@@ -37,7 +37,7 @@ func TestRingBufferOverflow(t *testing.T) {
 	hub := NewHub(3)
 	for i := range 5 {
 		raw := json.RawMessage(`{"source":"test","action":"` + string(rune('a'+i)) + `"}`)
-		hub.Publish(raw)
+		_, _ = hub.Publish(raw)
 	}
 
 	events := hub.Recent(10, Filter{})
@@ -51,9 +51,9 @@ func TestRingBufferOverflow(t *testing.T) {
 
 func TestFilterMatching(t *testing.T) {
 	hub := NewHub(100)
-	hub.Publish(json.RawMessage(`{"source":"a","channel":"ch1","action":"x"}`))
-	hub.Publish(json.RawMessage(`{"source":"b","channel":"ch2","action":"y"}`))
-	hub.Publish(json.RawMessage(`{"source":"a","channel":"ch1","action":"z","level":"error"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"a","channel":"ch1","action":"x"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"b","channel":"ch2","action":"y"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"a","channel":"ch1","action":"z","level":"error"}`))
 
 	tests := []struct {
 		filter   Filter
@@ -79,8 +79,8 @@ func TestSubscribeReceivesEvents(t *testing.T) {
 	hub := NewHub(100)
 	client := hub.Subscribe(Filter{Source: "target"})
 
-	hub.Publish(json.RawMessage(`{"source":"other","action":"ignore"}`))
-	hub.Publish(json.RawMessage(`{"source":"target","action":"catch"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"other","action":"ignore"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"target","action":"catch"}`))
 
 	select {
 	case evt := <-client.ch:
@@ -104,7 +104,7 @@ func TestSubscribeReceivesEvents(t *testing.T) {
 func TestTimestampAutoSet(t *testing.T) {
 	hub := NewHub(100)
 	before := time.Now()
-	hub.Publish(json.RawMessage(`{"source":"test"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"test"}`))
 	after := time.Now()
 
 	events := hub.Recent(1, Filter{})
@@ -115,7 +115,7 @@ func TestTimestampAutoSet(t *testing.T) {
 
 func TestEnrichedFields(t *testing.T) {
 	hub := NewHub(100)
-	hub.Publish(json.RawMessage(`{"source":"app","channel":"ops","level":"warn","duration_ms":42}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"app","channel":"ops","level":"warn","duration_ms":42}`))
 
 	events := hub.Recent(1, Filter{})
 	evt := events[0]

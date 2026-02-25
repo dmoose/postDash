@@ -14,11 +14,11 @@ type Config struct {
 
 // NotifyRule defines when and where to send notifications.
 type NotifyRule struct {
-	Name     string       `yaml:"name"`               // human label for this rule
-	Match    MatchRule    `yaml:"match"`               // event matching criteria
-	Webhook  *Webhook     `yaml:"webhook,omitempty"`   // outbound webhook
-	Slack    *SlackConf   `yaml:"slack,omitempty"`     // Slack webhook
-	Discord  *DiscordConf `yaml:"discord,omitempty"`   // Discord webhook
+	Name     string        `yaml:"name"`               // human label for this rule
+	Match    MatchRule     `yaml:"match"`              // event matching criteria
+	Webhook  *Webhook      `yaml:"webhook,omitempty"`  // outbound webhook
+	Slack    *SlackConf    `yaml:"slack,omitempty"`    // Slack webhook
+	Discord  *DiscordConf  `yaml:"discord,omitempty"`  // Discord webhook
 	Database *DatabaseConf `yaml:"database,omitempty"` // database storage
 }
 

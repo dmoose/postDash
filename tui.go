@@ -107,7 +107,7 @@ func (m tuiModel) loadRecent() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var events []Event
 		if err := json.NewDecoder(resp.Body).Decode(&events); err != nil {
 			return nil
@@ -239,11 +239,12 @@ func (m tuiModel) View() string {
 
 	// Line 2: filter
 	var filterLine string
-	if m.editing {
+	switch {
+	case m.editing:
 		filterLine = m.filter.View()
-	} else if m.filterStr != "" {
+	case m.filterStr != "":
 		filterLine = filterActive.Render("filter: " + m.filterStr)
-	} else {
+	default:
 		filterLine = dimStyle.Render("no filter")
 	}
 
@@ -322,37 +323,36 @@ func (m tuiModel) matchesFilter(evt Event) bool {
 
 	for part := range strings.FieldsSeq(m.filterStr) {
 		kv := strings.SplitN(part, ":", 2)
-		if len(kv) == 2 {
-			key, val := kv[0], strings.ToLower(kv[1])
-			switch key {
-			case "source":
-				if !strings.Contains(strings.ToLower(evt.Source), val) {
-					return false
-				}
-			case "channel":
-				if !strings.Contains(strings.ToLower(evt.Channel), val) {
-					return false
-				}
-			case "level":
-				if strings.ToLower(evt.Level) != val {
-					return false
-				}
-			case "action":
-				if !strings.Contains(strings.ToLower(evt.Action), val) {
-					return false
-				}
-			case "agent":
-				if !strings.Contains(strings.ToLower(evt.AgentID), val) {
-					return false
-				}
-			default:
-				// Unknown key — treat as plain text search
-				if !eventContains(evt, strings.ToLower(part)) {
-					return false
-				}
-			}
-		} else {
+		if len(kv) != 2 {
 			// Plain text — match against any field
+			if !eventContains(evt, strings.ToLower(part)) {
+				return false
+			}
+			continue
+		}
+		key, val := kv[0], strings.ToLower(kv[1])
+		switch key {
+		case "source":
+			if !strings.Contains(strings.ToLower(evt.Source), val) {
+				return false
+			}
+		case "channel":
+			if !strings.Contains(strings.ToLower(evt.Channel), val) {
+				return false
+			}
+		case "level":
+			if strings.ToLower(evt.Level) != val {
+				return false
+			}
+		case "action":
+			if !strings.Contains(strings.ToLower(evt.Action), val) {
+				return false
+			}
+		case "agent":
+			if !strings.Contains(strings.ToLower(evt.AgentID), val) {
+				return false
+			}
+		default:
 			if !eventContains(evt, strings.ToLower(part)) {
 				return false
 			}
@@ -388,7 +388,7 @@ func (m tuiModel) readSSEStream() {
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
@@ -420,9 +420,9 @@ func (m tuiModel) pollStats() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var stats HubStats
-		json.NewDecoder(resp.Body).Decode(&stats)
+		_ = json.NewDecoder(resp.Body).Decode(&stats)
 		return statsMsg(stats)
 	}
 }

@@ -31,7 +31,7 @@ func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.Ha
 		// Tee to log
 		if logWriter != nil {
 			line, _ := json.Marshal(evt)
-			fmt.Fprintf(logWriter, "%s\n", line)
+			_, _ = fmt.Fprintf(logWriter, "%s\n", line)
 		}
 
 		// Check notification rules
@@ -40,7 +40,7 @@ func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.Ha
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"seq": evt.Seq})
+		_ = json.NewEncoder(w).Encode(map[string]any{"seq": evt.Seq})
 	}
 }
 
@@ -70,7 +70,7 @@ func sseStreamHandler(hub *Hub) http.HandlerFunc {
 					return
 				}
 				data, _ := json.Marshal(evt)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
 				flusher.Flush()
 			case <-ctx.Done():
 				return
@@ -92,7 +92,7 @@ func recentHandler(hub *Hub) http.HandlerFunc {
 		events := hub.Recent(n, filter)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		json.NewEncoder(w).Encode(events)
+		_ = json.NewEncoder(w).Encode(events)
 	}
 }
 
@@ -114,7 +114,7 @@ func rateHistoryHandler(hub *Hub) http.HandlerFunc {
 		counts := hub.RateHistory(time.Duration(minutes)*time.Minute, buckets)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		json.NewEncoder(w).Encode(counts)
+		_ = json.NewEncoder(w).Encode(counts)
 	}
 }
 
@@ -122,7 +122,7 @@ func channelsHandler(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		json.NewEncoder(w).Encode(hub.Channels())
+		_ = json.NewEncoder(w).Encode(hub.Channels())
 	}
 }
 
@@ -130,7 +130,7 @@ func statsHandler(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		json.NewEncoder(w).Encode(hub.Stats())
+		_ = json.NewEncoder(w).Encode(hub.Stats())
 	}
 }
 

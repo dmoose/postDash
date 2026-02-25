@@ -1,12 +1,38 @@
 # eventrelay
 
+[![CI](https://github.com/dmoose/eventrelay/actions/workflows/ci.yml/badge.svg)](https://github.com/dmoose/eventrelay/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A lightweight real-time event streaming service. Any tool that can POST JSON gets a live dashboard — browser UI, TUI, or both.
+
+## Why eventrelay?
+
+Most observability tools are heavyweight — they need databases, collectors, dashboards, and configuration before you see anything. eventrelay is the opposite: a single binary that gives you a real-time event feed in seconds. It's designed for development workflows, CI pipelines, agent monitoring, and anywhere you want visibility without infrastructure.
+
+- **Zero dependencies** — single Go binary, no database required
+- **Language-agnostic** — POST JSON from any language or tool, SDKs for Go, Python, and TypeScript
+- **Fire-and-forget** — SDKs never block your application's critical path
+- **Two dashboards** — web UI in the browser, TUI in the terminal
+- **Notification routing** — match rules forward events to Slack, Discord, webhooks, or a database
+
+## Install
+
+```bash
+go install github.com/dmoose/eventrelay@latest
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/dmoose/eventrelay.git
+cd eventrelay
+make build
+```
 
 ## Quick Start
 
 ```bash
-go build -o eventrelay .
-./eventrelay --port 6060
+eventrelay --port 6060
 ```
 
 Open http://localhost:6060 in a browser, then send events:
@@ -21,8 +47,8 @@ curl -X POST http://localhost:6060/events \
 Connect a terminal dashboard to a running server:
 
 ```bash
-./eventrelay --tui
-./eventrelay --tui --url http://remote-server:6060
+eventrelay --tui
+eventrelay --tui --url http://remote-server:6060
 ```
 
 Keys: `/` filter, `x` clear filter, `p` pause, `c` clear, `q` quit, `ctrl+c` force quit.
@@ -52,11 +78,15 @@ Only `source` is required. `level` defaults to `info`. `ts` is auto-set if missi
 | `/events/stream` | GET | SSE stream (filterable via query params) |
 | `/events/recent` | GET | Last N events as JSON (`?n=100`) |
 | `/events/stats` | GET | Aggregate counters (by source, level, channel) |
+| `/events/rate` | GET | Event rate history (`?minutes=5&buckets=60`) |
+| `/events/channels` | GET | List all active channels |
 | `/` | GET | Web dashboard |
 
 SSE and recent endpoints accept filter params: `?source=x&channel=y&level=error&action=z&agent_id=a`
 
-## Go SDK
+## SDKs
+
+### Go
 
 ```go
 import "github.com/dmoose/eventrelay/client"
@@ -72,7 +102,7 @@ done(map[string]any{"rows": 42})
 c.Flush() // wait for pending events before exit
 ```
 
-### slog Integration
+#### slog Integration
 
 ```go
 handler := client.NewSlogHandler(c, "logs")
@@ -80,9 +110,45 @@ logger := slog.New(handler)
 logger.Info("request handled", "path", "/api/users", "status", 200)
 ```
 
+See [client/README.md](client/README.md) for full Go SDK documentation.
+
+### Python
+
+```python
+from eventrelay import Client
+
+er = Client("http://localhost:6060/events", "myapp")
+er.emit("deploy", {"env": "prod"})
+
+with er.timed("db_query") as t:
+    result = do_query()
+    t.data["rows"] = len(result)
+
+er.flush()
+```
+
+See [sdks/python/README.md](sdks/python/README.md) for full Python SDK documentation.
+
+### TypeScript
+
+```typescript
+import { Client } from "eventrelay";
+
+const er = new Client("http://localhost:6060/events", "myapp");
+er.emit("deploy", { env: "prod" });
+
+const done = er.timed("db_query");
+const result = await doQuery();
+done({ rows: result.length });
+
+await er.flush();
+```
+
+See [sdks/typescript/README.md](sdks/typescript/README.md) for full TypeScript SDK documentation.
+
 ## Notifications
 
-Create `eventrelay.yaml`:
+Create `eventrelay.yaml` (see [eventrelay.example.yaml](eventrelay.example.yaml)):
 
 ```yaml
 notify:
@@ -109,13 +175,13 @@ notify:
 ```
 
 ```bash
-./eventrelay --config eventrelay.yaml
+eventrelay --config eventrelay.yaml
 ```
 
 ## Network Mode
 
 ```bash
-./eventrelay --bind 0.0.0.0 --token mysecret
+eventrelay --bind 0.0.0.0 --token mysecret
 ```
 
 With `--token`, POST requests require `Authorization: Bearer mysecret`.
@@ -131,4 +197,22 @@ With `--token`, POST requests require `Authorization: Bearer mysecret`.
 --config string  notification config file
 --tui            connect as TUI dashboard client
 --url string     server URL for TUI mode
+--status         check if eventrelay is running
 ```
+
+## macOS Service
+
+```bash
+make install            # install binary to /usr/local/bin
+make install-service    # start on login via launchd
+make status             # check if running
+make uninstall-service  # stop and remove service
+```
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for design details on the ring buffer, SSE fan-out, and notification pipeline.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

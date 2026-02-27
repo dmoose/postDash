@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
@@ -9,15 +10,32 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+// version is set at build time via ldflags.
+var version = "dev"
 
 //go:embed static
 var staticFS embed.FS
 
 func main() {
+	// Subcommand dispatch — check before flag parsing
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "send":
+			runSend(os.Args[2:])
+			return
+		case "version":
+			fmt.Println("eventrelay " + version)
+			return
+		}
+	}
+
 	port := flag.Int("port", 6060, "listen port")
 	bind := flag.String("bind", "127.0.0.1", "bind address (use 0.0.0.0 for network access)")
 	token := flag.String("token", "", "require Bearer token for POST /events")
@@ -27,7 +45,13 @@ func main() {
 	tuiMode := flag.Bool("tui", false, "connect to a running eventrelay as a TUI dashboard")
 	tuiURL := flag.String("url", "", "eventrelay server URL for TUI mode")
 	statusMode := flag.Bool("status", false, "check if eventrelay is running")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("eventrelay " + version)
+		return
+	}
 
 	// Status check mode
 	if *statusMode {
@@ -102,23 +126,43 @@ func main() {
 	mux := http.NewServeMux()
 
 	postHandler := postEventHandler(hub, logWriter, notifier)
+	batchHandler := batchEventHandler(hub, logWriter, notifier)
 	if *token != "" {
 		postHandler = requireToken(*token, postHandler)
+		batchHandler = requireToken(*token, batchHandler)
 		log.Printf("Token auth enabled for POST /events")
 	}
 	mux.HandleFunc("/events", postHandler)
+	mux.HandleFunc("/events/batch", batchHandler)
 	mux.HandleFunc("/events/stream", sseStreamHandler(hub))
 	mux.HandleFunc("/events/recent", recentHandler(hub))
 	mux.HandleFunc("/events/stats", statsHandler(hub))
 	mux.HandleFunc("/events/rate", rateHistoryHandler(hub))
 	mux.HandleFunc("/events/channels", channelsHandler(hub))
+	mux.HandleFunc("/healthz", healthHandler())
 
 	staticSub, _ := fs.Sub(staticFS, "static")
 	mux.Handle("/", http.FileServer(http.FS(staticSub)))
 
+	handler := corsMiddleware(mux)
+
 	addr := fmt.Sprintf("%s:%d", *bind, *port)
-	log.Printf("eventrelay listening on http://%s (pid %d)", addr, os.Getpid())
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	server := &http.Server{Addr: addr, Handler: handler}
+
+	// Graceful shutdown on SIGINT/SIGTERM
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		log.Println("shutting down...")
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("shutdown error: %v", err)
+		}
+	}()
+
+	log.Printf("eventrelay %s listening on http://%s (pid %d)", version, addr, os.Getpid())
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

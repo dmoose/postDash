@@ -38,6 +38,12 @@ eventrelay --port 6060
 Open http://localhost:6060 in a browser, then send events:
 
 ```bash
+eventrelay send -s myapp -a deploy -d '{"env":"prod"}'
+```
+
+Or with curl:
+
+```bash
 curl -X POST http://localhost:6060/events \
   -d '{"source":"myapp","action":"deploy","level":"info","data":{"env":"prod"}}'
 ```
@@ -52,6 +58,23 @@ eventrelay --tui --url http://remote-server:6060
 ```
 
 Keys: `/` filter, `x` clear filter, `p` pause, `c` clear, `q` quit, `ctrl+c` force quit.
+
+## CLI Send
+
+Send events from scripts, cron jobs, or the terminal without curl:
+
+```bash
+eventrelay send -s myapp -a deploy -l info -d '{"branch":"main"}'
+eventrelay send --source ci --action build_done --channel builds
+eventrelay send -s myapp -a crash -l error
+
+# Pipe raw JSON
+echo '{"source":"ci","action":"done"}' | eventrelay send --stdin
+
+# With auth and custom server
+eventrelay send -s myapp -a test -t mysecret -p 8080
+eventrelay send -s myapp -a test --url http://remote:6060
+```
 
 ## Event Schema
 
@@ -75,11 +98,13 @@ Only `source` is required. `level` defaults to `info`. `ts` is auto-set if missi
 | Endpoint | Method | Description |
 |---|---|---|
 | `/events` | POST | Submit an event |
+| `/events/batch` | POST | Submit multiple events as a JSON array |
 | `/events/stream` | GET | SSE stream (filterable via query params) |
 | `/events/recent` | GET | Last N events as JSON (`?n=100`) |
 | `/events/stats` | GET | Aggregate counters (by source, level, channel) |
 | `/events/rate` | GET | Event rate history (`?minutes=5&buckets=60`) |
 | `/events/channels` | GET | List all active channels |
+| `/healthz` | GET | Health check (`{"ok":true,"version":"..."}`) |
 | `/` | GET | Web dashboard |
 
 SSE and recent endpoints accept filter params: `?source=x&channel=y&level=error&action=z&agent_id=a`
@@ -198,16 +223,25 @@ With `--token`, POST requests require `Authorization: Bearer mysecret`.
 --tui            connect as TUI dashboard client
 --url string     server URL for TUI mode
 --status         check if eventrelay is running
+--version        print version and exit
 ```
 
 ## macOS Service
 
 ```bash
-make install            # install binary to /usr/local/bin
-make install-service    # start on login via launchd
+make install            # build and install binary to /usr/local/bin
+make install-service    # install + start on login via launchd
 make status             # check if running
+make upgrade            # build, replace binary, restart service
+make restart-service    # restart without rebuilding
 make uninstall-service  # stop and remove service
 ```
+
+### Upgrading
+
+After pulling new code, run `make upgrade`. This stops the running service, installs the new binary, and restarts via launchd. The service has `KeepAlive` enabled, so launchd handles the restart automatically if the process exits.
+
+If you installed via `go install` without the launchd service, stop the running process (`kill $(cat ~/.config/eventrelay/eventrelay.pid)`), then `go install github.com/dmoose/eventrelay@latest` and start again.
 
 ## Architecture
 

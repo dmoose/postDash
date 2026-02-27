@@ -47,12 +47,13 @@ All hub operations are protected by a `sync.RWMutex`. Publishing takes a write l
 
 ## Event Flow
 
-1. **Ingest**: `POST /events` receives JSON, passes raw bytes to `hub.Publish()`
-2. **Enrich**: The hub assigns a monotonic sequence number, defaults level to "info", and sets timestamp if missing
-3. **Store**: The event is appended to the ring buffer (evicting the oldest if full)
-4. **Fan-out**: Each subscribed SSE client whose filter matches receives the event via a buffered channel (non-blocking send — slow clients drop events rather than causing backpressure)
-5. **Notify**: If a notifier is configured, the event is checked against match rules asynchronously (in a goroutine) and dispatched to Slack/Discord/webhook/database targets
-6. **Log**: If `--log` is set, the event is appended to a JSONL file
+1. **Validate**: The handler checks that `source` is present, rejecting the request with 400 if missing
+2. **Ingest**: `POST /events` (or `/events/batch`) passes raw bytes to `hub.Publish()`
+3. **Enrich**: The hub assigns a monotonic sequence number, defaults level to "info", and sets timestamp if missing
+4. **Store**: The event is appended to the ring buffer (evicting the oldest if full)
+5. **Fan-out**: Each subscribed SSE client whose filter matches receives the event via a buffered channel (non-blocking send — slow clients drop events rather than causing backpressure)
+6. **Notify**: If a notifier is configured, the event is checked against match rules asynchronously (in a goroutine) and dispatched to Slack/Discord/webhook/database targets
+7. **Log**: If `--log` is set, the event is appended to a JSONL file
 
 ## Match Rules
 
@@ -76,3 +77,11 @@ The web UI (`static/index.html` + `static/app.js`) is embedded in the binary via
 ## TUI Dashboard
 
 The TUI (`tui.go`) uses the Charmbracelet BubbleTea framework. It connects to a running eventrelay server as an SSE client, providing terminal-based monitoring with filtering, pause, and color-coded output. The TUI is a client, not a server — it connects to the same HTTP endpoints as the web dashboard.
+
+## CLI Send Command
+
+The `send` subcommand (`send.go`) is a thin HTTP client that builds an event from flags and POSTs it to the server. It supports both flag-based construction (`-s myapp -a deploy`) and raw JSON from stdin (`--stdin`). This avoids the need for `curl` in shell scripts and cron jobs.
+
+## Graceful Shutdown
+
+The server listens for SIGINT and SIGTERM via `signal.NotifyContext`. On signal, `http.Server.Shutdown()` is called which stops accepting new connections, waits for in-flight requests (including SSE streams) to complete, then returns. Deferred cleanup (PID file removal, notifier DB close, log file close) runs after shutdown completes.

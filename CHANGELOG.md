@@ -2,6 +2,19 @@
 
 All notable changes to eventrelay are documented in this file.
 
+## Unreleased
+
+### Added
+- `eventrelay send` CLI command for emitting events from scripts and the terminal
+- `--version` flag and `version` subcommand with build-time version embedding
+- `POST /events/batch` endpoint for submitting multiple events in a single request
+- `GET /healthz` endpoint returning `{"ok":true,"version":"..."}`
+- CORS preflight (OPTIONS) handling for cross-origin browser clients
+- Graceful shutdown on SIGINT/SIGTERM — drains connections, flushes logs, closes DB
+
+### Fixed
+- Server now validates that `source` is present on `POST /events` and `/events/batch`
+
 ## v0.1.0 — Initial Release
 
 ### Added

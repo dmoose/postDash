@@ -22,6 +22,15 @@ func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.Ha
 			return
 		}
 
+		// Validate source is present
+		var check struct {
+			Source string `json:"source"`
+		}
+		if err := json.Unmarshal(body, &check); err == nil && check.Source == "" {
+			http.Error(w, "source is required", http.StatusBadRequest)
+			return
+		}
+
 		evt, err := hub.Publish(json.RawMessage(body))
 		if err != nil {
 			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
@@ -44,6 +53,58 @@ func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.Ha
 	}
 }
 
+func batchEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+
+		body, err := io.ReadAll(io.LimitReader(r.Body, 10<<20)) // 10MB limit for batches
+		if err != nil {
+			http.Error(w, "read error", http.StatusBadRequest)
+			return
+		}
+
+		var rawEvents []json.RawMessage
+		if err := json.Unmarshal(body, &rawEvents); err != nil {
+			http.Error(w, "expected JSON array: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		seqs := make([]uint64, 0, len(rawEvents))
+		for i, raw := range rawEvents {
+			// Validate source
+			var check struct {
+				Source string `json:"source"`
+			}
+			if err := json.Unmarshal(raw, &check); err == nil && check.Source == "" {
+				http.Error(w, fmt.Sprintf("event %d: source is required", i), http.StatusBadRequest)
+				return
+			}
+
+			evt, err := hub.Publish(raw)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("event %d: %v", i, err), http.StatusBadRequest)
+				return
+			}
+
+			if logWriter != nil {
+				line, _ := json.Marshal(evt)
+				_, _ = fmt.Fprintf(logWriter, "%s\n", line)
+			}
+			if notifier != nil {
+				go notifier.Check(*evt)
+			}
+
+			seqs = append(seqs, evt.Seq)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"count": len(seqs), "seqs": seqs})
+	}
+}
+
 func sseStreamHandler(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		flusher, ok := w.(http.Flusher)
@@ -59,7 +120,6 @@ func sseStreamHandler(hub *Hub) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		flusher.Flush()
 
 		ctx := r.Context()
@@ -91,7 +151,6 @@ func recentHandler(hub *Hub) http.HandlerFunc {
 		filter := filterFromQuery(r)
 		events := hub.Recent(n, filter)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		_ = json.NewEncoder(w).Encode(events)
 	}
 }
@@ -113,7 +172,6 @@ func rateHistoryHandler(hub *Hub) http.HandlerFunc {
 		}
 		counts := hub.RateHistory(time.Duration(minutes)*time.Minute, buckets)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		_ = json.NewEncoder(w).Encode(counts)
 	}
 }
@@ -121,7 +179,6 @@ func rateHistoryHandler(hub *Hub) http.HandlerFunc {
 func channelsHandler(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		_ = json.NewEncoder(w).Encode(hub.Channels())
 	}
 }
@@ -129,8 +186,14 @@ func channelsHandler(hub *Hub) http.HandlerFunc {
 func statsHandler(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		_ = json.NewEncoder(w).Encode(hub.Stats())
+	}
+}
+
+func healthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "version": version})
 	}
 }
 
@@ -142,4 +205,20 @@ func filterFromQuery(r *http.Request) Filter {
 		Level:   r.URL.Query().Get("level"),
 		AgentID: r.URL.Query().Get("agent_id"),
 	}
+}
+
+// corsMiddleware handles CORS preflight requests and sets headers on all responses.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

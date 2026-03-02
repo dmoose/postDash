@@ -1,6 +1,14 @@
 # eventrelay configuration
 # Usage: eventrelay --config eventrelay.yaml
 
+# Server settings (flags override these)
+server:
+  port: 6060
+  bind: 127.0.0.1
+  # token: mysecret
+  buffer: 1000
+  # log: /var/log/eventrelay/events.jsonl
+
 notify:
   # Send errors to Slack
   - name: errors to slack

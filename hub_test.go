@@ -113,6 +113,86 @@ func TestTimestampAutoSet(t *testing.T) {
 	}
 }
 
+func TestStats(t *testing.T) {
+	hub := NewHub(100)
+	_, _ = hub.Publish(json.RawMessage(`{"source":"a","level":"info","channel":"ops"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"a","level":"error","channel":"ops"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"b","level":"info","channel":"deploy"}`))
+
+	stats := hub.Stats()
+	if stats.TotalEvents != 3 {
+		t.Errorf("expected 3 total events, got %d", stats.TotalEvents)
+	}
+	if stats.BySource["a"] != 2 {
+		t.Errorf("expected 2 events from source a, got %d", stats.BySource["a"])
+	}
+	if stats.BySource["b"] != 1 {
+		t.Errorf("expected 1 event from source b, got %d", stats.BySource["b"])
+	}
+	if stats.ByLevel["info"] != 2 {
+		t.Errorf("expected 2 info events, got %d", stats.ByLevel["info"])
+	}
+	if stats.ByLevel["error"] != 1 {
+		t.Errorf("expected 1 error event, got %d", stats.ByLevel["error"])
+	}
+	if stats.ByChannel["ops"] != 2 {
+		t.Errorf("expected 2 ops events, got %d", stats.ByChannel["ops"])
+	}
+	if stats.ByChannel["deploy"] != 1 {
+		t.Errorf("expected 1 deploy event, got %d", stats.ByChannel["deploy"])
+	}
+	// Events were just published, rate should be > 0
+	if stats.RecentRate <= 0 {
+		t.Error("expected non-zero recent rate for just-published events")
+	}
+}
+
+func TestRateHistory(t *testing.T) {
+	hub := NewHub(100)
+	// Publish a few events (all with "now" timestamps)
+	for range 5 {
+		_, _ = hub.Publish(json.RawMessage(`{"source":"test"}`))
+	}
+
+	counts := hub.RateHistory(5*time.Minute, 10)
+	if len(counts) != 10 {
+		t.Fatalf("expected 10 buckets, got %d", len(counts))
+	}
+
+	// All events are recent, so they should land in the last bucket
+	total := 0
+	for _, c := range counts {
+		total += c
+	}
+	if total != 5 {
+		t.Errorf("expected 5 total events across buckets, got %d", total)
+	}
+	// Last bucket should have all the events (they were all just now)
+	if counts[9] != 5 {
+		t.Errorf("expected 5 events in last bucket, got %d", counts[9])
+	}
+}
+
+func TestChannels(t *testing.T) {
+	hub := NewHub(100)
+	_, _ = hub.Publish(json.RawMessage(`{"source":"a","channel":"alpha"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"b","channel":"beta"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"c"}`)) // no channel
+
+	channels := hub.Channels()
+	if len(channels) != 2 {
+		t.Fatalf("expected 2 channels, got %d", len(channels))
+	}
+
+	found := map[string]bool{}
+	for _, ch := range channels {
+		found[ch] = true
+	}
+	if !found["alpha"] || !found["beta"] {
+		t.Errorf("expected alpha and beta channels, got %v", channels)
+	}
+}
+
 func TestEnrichedFields(t *testing.T) {
 	hub := NewHub(100)
 	_, _ = hub.Publish(json.RawMessage(`{"source":"app","channel":"ops","level":"warn","duration_ms":42}`))

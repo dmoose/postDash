@@ -20,6 +20,9 @@ import (
 // version is set at build time via ldflags.
 var version = "dev"
 
+// defaultPort is the default listen port, shared between server and send command.
+const defaultPort = 6060
+
 //go:embed static
 var staticFS embed.FS
 
@@ -36,7 +39,7 @@ func main() {
 		}
 	}
 
-	port := flag.Int("port", 6060, "listen port")
+	port := flag.Int("port", defaultPort, "listen port")
 	bind := flag.String("bind", "127.0.0.1", "bind address (use 0.0.0.0 for network access)")
 	token := flag.String("token", "", "require Bearer token for POST /events")
 	logFile := flag.String("log", "", "optional JSONL log file path")
@@ -87,7 +90,7 @@ func main() {
 	}
 	defer pidFile.Remove()
 
-	// Load config
+	// Load config — YAML settings provide defaults, flags override
 	var cfg *Config
 	if *configFile != "" {
 		if _, err := os.Stat(*configFile); err == nil {
@@ -96,6 +99,25 @@ func main() {
 				log.Fatalf("loading config: %v", err) //nolint:gocritic // fatal is intentional; pidFile cleanup is best-effort
 			}
 			log.Printf("Loaded config from %s (%d notification rules)", *configFile, len(cfg.Notify))
+		}
+	}
+
+	// Apply config file defaults — flags take precedence over YAML
+	if cfg != nil && cfg.Server != nil {
+		if cfg.Server.Port != 0 && !flagSet("port") {
+			*port = cfg.Server.Port
+		}
+		if cfg.Server.Bind != "" && !flagSet("bind") {
+			*bind = cfg.Server.Bind
+		}
+		if cfg.Server.Token != "" && !flagSet("token") {
+			*token = cfg.Server.Token
+		}
+		if cfg.Server.Buffer != 0 && !flagSet("buffer") {
+			*bufSize = cfg.Server.Buffer
+		}
+		if cfg.Server.Log != "" && !flagSet("log") {
+			*logFile = cfg.Server.Log
 		}
 	}
 
@@ -114,7 +136,7 @@ func main() {
 
 	var logWriter io.Writer
 	if *logFile != "" {
-		f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			log.Fatalf("opening log file: %v", err)
 		}
@@ -194,6 +216,17 @@ func defaultConfigPath() string {
 		return home + "/.config/eventrelay/eventrelay.yaml"
 	}
 	return ""
+}
+
+// flagSet returns true if the named flag was explicitly set on the command line.
+func flagSet(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
 
 func requireToken(token string, next http.HandlerFunc) http.HandlerFunc {

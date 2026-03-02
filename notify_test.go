@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -109,6 +110,36 @@ func TestMatchRuleANDLogic(t *testing.T) {
 		if rule.Matches(tt.event) != tt.matches {
 			t.Errorf("event %+v: expected match=%v", tt.event, tt.matches)
 		}
+	}
+}
+
+func TestFormatNotification(t *testing.T) {
+	// Basic event
+	msg := formatNotification(Event{Source: "myapp", Level: "error", Action: "crash"})
+	if msg != "[error] myapp: crash" {
+		t.Errorf("unexpected basic format: %s", msg)
+	}
+
+	// With channel
+	msg = formatNotification(Event{Source: "ci", Level: "info", Channel: "deploy", Action: "started"})
+	if msg != "[info] ci/deploy: started" {
+		t.Errorf("unexpected channel format: %s", msg)
+	}
+
+	// With agent and duration
+	dur := int64(150)
+	msg = formatNotification(Event{Source: "app", Level: "warn", Action: "slow", AgentID: "bot1", DurationMS: &dur})
+	if !strings.Contains(msg, "(agent: bot1)") {
+		t.Errorf("expected agent in output: %s", msg)
+	}
+	if !strings.Contains(msg, "[150ms]") {
+		t.Errorf("expected duration in output: %s", msg)
+	}
+
+	// With data
+	msg = formatNotification(Event{Source: "app", Level: "info", Data: map[string]any{"key": "val"}})
+	if !strings.Contains(msg, "```") {
+		t.Errorf("expected code block for data: %s", msg)
 	}
 }
 

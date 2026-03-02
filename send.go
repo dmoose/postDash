@@ -27,8 +27,8 @@ func runSend(args []string) {
 	fs.StringVar(data, "d", "", "JSON data payload (shorthand)")
 	token := fs.String("token", "", "Bearer token for auth")
 	fs.StringVar(token, "t", "", "Bearer token (shorthand)")
-	port := fs.Int("port", 6060, "server port")
-	fs.IntVar(port, "p", 6060, "server port (shorthand)")
+	port := fs.Int("port", defaultPort, "server port")
+	fs.IntVar(port, "p", defaultPort, "server port (shorthand)")
 	url := fs.String("url", "", "full server URL (overrides --port)")
 	stdin := fs.Bool("stdin", false, "read JSON event from stdin")
 

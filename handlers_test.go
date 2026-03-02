@@ -83,6 +83,36 @@ func TestHealthEndpoint(t *testing.T) {
 	}
 }
 
+func TestRequireToken(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	handler := requireToken("secret123", inner)
+
+	tests := []struct {
+		name   string
+		header string
+		want   int
+	}{
+		{"no header", "", http.StatusUnauthorized},
+		{"wrong token", "Bearer wrong", http.StatusUnauthorized},
+		{"missing Bearer prefix", "secret123", http.StatusUnauthorized},
+		{"valid token", "Bearer secret123", http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodPost, "/events", nil)
+		if tt.header != "" {
+			req.Header.Set("Authorization", tt.header)
+		}
+		w := httptest.NewRecorder()
+		handler(w, req)
+		if w.Code != tt.want {
+			t.Errorf("%s: expected %d, got %d", tt.name, tt.want, w.Code)
+		}
+	}
+}
+
 func TestCORSPreflight(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {

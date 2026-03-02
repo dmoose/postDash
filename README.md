@@ -176,6 +176,14 @@ See [sdks/typescript/README.md](sdks/typescript/README.md) for full TypeScript S
 Create `eventrelay.yaml` (see [eventrelay.example.yaml](eventrelay.example.yaml)):
 
 ```yaml
+# Server settings (flags override these)
+server:
+  port: 6060
+  bind: 127.0.0.1
+  # token: mysecret
+  buffer: 1000
+  # log: /var/log/eventrelay/events.jsonl
+
 notify:
   - name: errors to slack
     match:

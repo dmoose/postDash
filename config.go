@@ -9,7 +9,18 @@ import (
 
 // Config is the eventrelay configuration file.
 type Config struct {
+	Server *ServerConf  `yaml:"server,omitempty"`
 	Notify []NotifyRule `yaml:"notify"`
+}
+
+// ServerConf holds server settings that can be set in the YAML config file.
+// Flags take precedence over these values.
+type ServerConf struct {
+	Port   int    `yaml:"port,omitempty"`   // listen port
+	Bind   string `yaml:"bind,omitempty"`   // bind address
+	Token  string `yaml:"token,omitempty"`  // Bearer token for POST auth
+	Buffer int    `yaml:"buffer,omitempty"` // ring buffer size
+	Log    string `yaml:"log,omitempty"`    // JSONL log file path
 }
 
 // NotifyRule defines when and where to send notifications.

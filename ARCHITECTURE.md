@@ -82,6 +82,12 @@ The TUI (`tui.go`) uses the Charmbracelet BubbleTea framework. It connects to a 
 
 The `send` subcommand (`send.go`) is a thin HTTP client that builds an event from flags and POSTs it to the server. It supports both flag-based construction (`-s myapp -a deploy`) and raw JSON from stdin (`--stdin`). This avoids the need for `curl` in shell scripts and cron jobs.
 
+## HTTP Middleware
+
+All requests pass through a CORS middleware that sets `Access-Control-Allow-Origin: *` and handles `OPTIONS` preflight requests. This allows browser-based clients on other origins to use the API directly.
+
+A `GET /healthz` endpoint returns `{"ok":true,"version":"..."}` for load balancer and monitoring health checks.
+
 ## Graceful Shutdown
 
 The server listens for SIGINT and SIGTERM via `signal.NotifyContext`. On signal, `http.Server.Shutdown()` is called which stops accepting new connections, waits for in-flight requests (including SSE streams) to complete, then returns. Deferred cleanup (PID file removal, notifier DB close, log file close) runs after shutdown completes.

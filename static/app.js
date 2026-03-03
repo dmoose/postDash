@@ -4,6 +4,7 @@ const emptyMsg = document.getElementById('empty-msg');
 const btnPause = document.getElementById('btn-pause');
 const btnClear = document.getElementById('btn-clear');
 const fSource = document.getElementById('f-source');
+const fChannel = document.getElementById('f-channel');
 const fAction = document.getElementById('f-action');
 const fLevel = document.getElementById('f-level');
 const fAgent = document.getElementById('f-agent');
@@ -60,17 +61,29 @@ function addEvent(evt) {
   div.dataset.agent = evt.agent_id || '';
 
   const ts = new Date(evt.ts).toLocaleTimeString();
-  const parts = [`<span class="source">${esc(evt.source || '?')}</span>`];
-  if (evt.channel) parts.push(`<span class="channel">${esc(evt.channel)}</span>`);
-  if (evt.action) parts.push(`<span class="action">${esc(evt.action)}</span>`);
-  parts.push(`<span class="level">${esc(level)}</span>`);
-  if (evt.agent_id) parts.push(`<span class="agent">${esc(evt.agent_id)}</span>`);
-  if (evt.duration_ms != null) parts.push(`<span class="duration">${evt.duration_ms}ms</span>`);
-  parts.push(`<span class="time">#${evt.seq} ${ts}</span>`);
+  const fields = [`<span class="source">${esc(evt.source || '?')}</span>`];
+  if (evt.channel) fields.push(`<span class="channel">${esc(evt.channel)}</span>`);
+  if (evt.action) fields.push(`<span class="action">${esc(evt.action)}</span>`);
+  fields.push(`<span class="level">${esc(level)}</span>`);
+  if (evt.agent_id) fields.push(`<span class="agent">${esc(evt.agent_id)}</span>`);
+  if (evt.duration_ms != null) fields.push(`<span class="duration">${evt.duration_ms}ms</span>`);
+
+  // Show data inline (truncated) when it's compact enough
+  const data = evt.data || {};
+  const dataStr = Object.keys(data).length > 0 ? JSON.stringify(data) : '';
+  const inlineData = dataStr && dataStr.length < 200
+    ? `<span class="inline-data">${esc(dataStr)}</span>`
+    : (dataStr ? '<span class="inline-data">{ ... }</span>' : '');
+
+  const detail = dataStr ? esc(JSON.stringify(data, null, 2)) : '';
 
   div.innerHTML = `
-    <div class="meta">${parts.join(' ')}</div>
-    <div class="detail">${esc(JSON.stringify(evt.data || {}, null, 2))}</div>
+    <div class="row">
+      <span class="fields">${fields.join(' ')}</span>
+      ${inlineData}
+      <span class="time">#${evt.seq} ${ts}</span>
+    </div>
+    ${detail ? `<div class="detail">${detail}</div>` : ''}
   `;
 
   feed.insertBefore(div, emptyMsg.nextSibling);
@@ -88,12 +101,12 @@ function esc(s) {
   return d.innerHTML;
 }
 
-// --- Filtering (client-side, includes channel tab) ---
+// --- Filtering (client-side, includes channel tab + input) ---
 
 function getFilters() {
   return {
     source: fSource.value.toLowerCase(),
-    channel: activeChannel.toLowerCase(),
+    channel: activeChannel.toLowerCase() || fChannel.value.toLowerCase(),
     action: fAction.value.toLowerCase(),
     level: fLevel.value.toLowerCase(),
     agent: fAgent.value.toLowerCase(),
@@ -104,7 +117,7 @@ function applyFilterToElement(el) {
   const f = getFilters();
   const show =
     (!f.source || el.dataset.source.toLowerCase().includes(f.source)) &&
-    (!f.channel || el.dataset.channel.toLowerCase() === f.channel) &&
+    (!f.channel || el.dataset.channel.toLowerCase().includes(f.channel)) &&
     (!f.action || el.dataset.action.toLowerCase().includes(f.action)) &&
     (!f.level || el.dataset.level.toLowerCase() === f.level) &&
     (!f.agent || el.dataset.agent.toLowerCase().includes(f.agent));
@@ -134,6 +147,7 @@ function updateChannelTabs() {
 
 function selectChannel(ch) {
   activeChannel = ch;
+  fChannel.value = '';
   channelBar.querySelectorAll('.channel-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.channel === ch);
   });
@@ -147,6 +161,7 @@ channelBar.querySelector('.channel-tab').onclick = () => selectChannel('');
 
 function updateDataLists() {
   updateDataList('dl-source', seen.source);
+  updateDataList('dl-channel', seen.channel);
   updateDataList('dl-action', seen.action);
   updateDataList('dl-level', seen.level);
   updateDataList('dl-agent', seen.agent_id);
@@ -228,7 +243,7 @@ btnClear.onclick = () => {
   countBadge.textContent = 0;
 };
 
-[fSource, fAction, fLevel, fAgent].forEach(input => {
+[fSource, fChannel, fAction, fLevel, fAgent].forEach(input => {
   input.addEventListener('input', applyFilters);
 });
 

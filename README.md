@@ -78,6 +78,8 @@ eventrelay send -s myapp -a test --url http://remote:6060
 
 ## Event Schema
 
+Events are JSON objects posted to `POST /events`:
+
 ```json
 {
   "source": "myapp",
@@ -91,7 +93,28 @@ eventrelay send -s myapp -a test --url http://remote:6060
 }
 ```
 
-Only `source` is required. `level` defaults to `info`. `ts` is auto-set if missing. `seq` is assigned by the server.
+### Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `source` | string | **yes** | What system or tool sent this event. Use a consistent identifier like `myapp`, `ci`, `llmshadow`. This is the primary grouping key in the dashboard. |
+| `channel` | string | no | A topic or category within the source. Use to separate concerns like `deploy`, `builds`, `monitoring`. Events can be filtered by channel via tabs in the dashboard. |
+| `action` | string | no | What happened. Use a short verb or operation name like `started`, `completed`, `db_query`, `shadow_scan`. |
+| `level` | string | no | Severity: `debug`, `info`, `warn`, or `error`. Defaults to `info`. The dashboard color-codes events by level and shows error/warn counts. |
+| `agent_id` | string | no | Identifies which agent, worker, or instance emitted the event. Useful when multiple agents share the same source — e.g., `claude-code-session-1`, `worker-3`. Displayed in the dashboard and filterable. |
+| `duration_ms` | integer | no | How long the operation took in milliseconds. Displayed inline in the dashboard. Use the SDK `Timed()` helpers to set this automatically. |
+| `data` | object | no | Arbitrary JSON payload with additional context. Shown inline in the dashboard for small payloads, expandable for larger ones. |
+| `ts` | string | no | ISO 8601 timestamp. Auto-set to the server's current time if omitted. |
+| `seq` | integer | — | Assigned by the server. Monotonically increasing sequence number. Do not set this. |
+
+### Guidelines for agents
+
+- Always set `source` to identify yourself consistently across events
+- Set `agent_id` to distinguish between concurrent instances of the same source
+- Use `action` for the operation name, not a full sentence — keep it grep-friendly
+- Use `level: error` for failures, `level: warn` for degraded states, `level: debug` for verbose tracing
+- Put structured details in `data`, not in `action` — the action should be a stable key you can filter on
+- Use `channel` to separate event streams within a source (e.g., a CI system might use channels `build`, `test`, `deploy`)
 
 ## API
 

@@ -12,16 +12,20 @@ help: ## Show this help
 build: ## Build the binary
 	go build -ldflags "-X main.version=$(VERSION)" -o $(BINARY) .
 
-install: build ## Install binary to $PREFIX/bin
+install: build ## Install binary and scripts to $PREFIX
 	install -d $(PREFIX)/bin
 	install -m 755 $(BINARY) $(PREFIX)/bin/
+	install -d $(PREFIX)/share/eventrelay/scripts
+	install -m 755 scripts/er-* $(PREFIX)/share/eventrelay/scripts/
 	install -d $(HOME)/.config/eventrelay
 	@echo "Installed $(BINARY) to $(PREFIX)/bin/"
+	@echo "Scripts: $(PREFIX)/share/eventrelay/scripts/"
 	@echo "Config: ~/.config/eventrelay/eventrelay.yaml"
 	@echo "Run 'make install-service' to start on login"
 
-uninstall: uninstall-service ## Remove installed binary
+uninstall: uninstall-service ## Remove installed binary and scripts
 	rm -f $(PREFIX)/bin/$(BINARY)
+	rm -rf $(PREFIX)/share/eventrelay
 
 install-service: install ## Install and start macOS launchd service
 	install -d $(LAUNCH_DIR)
@@ -43,6 +47,8 @@ upgrade: build ## Build, install, and restart the running service
 	@echo "Stopping eventrelay..."
 	-launchctl unload $(LAUNCH_DIR)/$(PLIST) 2>/dev/null
 	install -m 755 $(BINARY) $(PREFIX)/bin/
+	install -d $(PREFIX)/share/eventrelay/scripts
+	install -m 755 scripts/er-* $(PREFIX)/share/eventrelay/scripts/
 	@if [ -f $(LAUNCH_DIR)/$(PLIST) ]; then \
 		launchctl load $(LAUNCH_DIR)/$(PLIST); \
 		echo "eventrelay upgraded and restarted ($(VERSION))"; \

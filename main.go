@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -163,8 +164,35 @@ func main() {
 	mux.HandleFunc("/events/channels", channelsHandler(hub))
 	mux.HandleFunc("/healthz", healthHandler())
 
+	// Pages system
+	startTime := time.Now()
+	var pageRunner *PageRunner
+	if cfg != nil && len(cfg.Pages) > 0 {
+		scriptsDir := ""
+		if cfg.Server != nil {
+			scriptsDir = cfg.Server.ScriptsDir
+		}
+		pageRunner = NewPageRunner(cfg.Pages, scriptsDir)
+		log.Printf("Pages enabled: %d registered", len(cfg.Pages))
+	}
+	if pageRunner != nil {
+		mux.HandleFunc("/api/pages", pagesListHandler(pageRunner))
+		mux.HandleFunc("/api/pages/", pageContentHandler(pageRunner))
+	} else {
+		// Empty list when no pages configured
+		mux.HandleFunc("/api/pages", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte("[]"))
+		})
+	}
+	mux.HandleFunc("/api/status", statusPageHandler(hub, notifier, cfg, startTime))
+
 	staticSub, _ := fs.Sub(staticFS, "static")
-	mux.Handle("/", http.FileServer(http.FS(staticSub)))
+	staticHandler := http.FileServer(http.FS(staticSub))
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		staticHandler.ServeHTTP(w, r)
+	}))
 
 	handler := corsMiddleware(mux)
 

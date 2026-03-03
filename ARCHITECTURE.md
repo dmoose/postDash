@@ -78,6 +78,17 @@ The web UI (`static/index.html` + `static/app.js`) is embedded in the binary via
 
 The TUI (`tui.go`) uses the Charmbracelet BubbleTea framework. It connects to a running eventrelay server as an SSE client, providing terminal-based monitoring with filtering, pause, and color-coded output. The TUI is a client, not a server — it connects to the same HTTP endpoints as the web dashboard.
 
+## Pages System
+
+The pages system (`pages.go`) extends eventrelay from a push-only event viewer to a pull-capable system portal. Config-registered shell commands are executed on demand and their output is rendered in the dashboard.
+
+Key design decisions:
+- **Config file is the trust boundary** — commands are registered in YAML, not via API. No runtime command injection is possible.
+- **Output sanitization** — all output is HTML-escaped before rendering. The markdown renderer escapes first, then re-introduces only whitelisted structural tags.
+- **Caching** — each page has a configurable `interval`. Results are cached and reused until stale, preventing excessive command execution.
+- **Timeout** — commands are killed after 10 seconds via `context.WithTimeout`.
+- **PATH management** — the `scripts_dir` config prepends a directory to PATH, solving the common problem of launchd services having a minimal PATH that doesn't include tools like `brew`.
+
 ## CLI Send Command
 
 The `send` subcommand (`send.go`) is a thin HTTP client that builds an event from flags and POSTs it to the server. It supports both flag-based construction (`-s myapp -a deploy`) and raw JSON from stdin (`--stdin`). This avoids the need for `curl` in shell scripts and cron jobs.

@@ -7,12 +7,23 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #0d1117; color: #c9d1d9; }
-  header { padding: 12px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 { font-size: 16px; color: #58a6ff; font-weight: 600; white-space: nowrap; }
+  .top-bar { padding: 8px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 0; }
+  .top-bar h1 { font-size: 16px; color: #58a6ff; font-weight: 600; white-space: nowrap; margin-right: 8px; }
+  .top-bar .badge { margin-right: 12px; }
+  .nav-tab { padding: 6px 14px; font-size: 13px; color: #8b949e; cursor: pointer; border-radius: 4px; font-weight: 500; }
+  .nav-tab:hover { color: #c9d1d9; background: #21262d; }
+  .nav-tab.active { color: #58a6ff; background: #388bfd15; }
   .badge { padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
   .badge-green { background: #238636; color: #fff; }
   .badge-red { background: #f85149; color: #fff; }
   .badge-yellow { background: #d29922; color: #000; }
+  .events-toolbar { padding: 8px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .filters { display: flex; gap: 8px; flex: 1; }
+  .filters input { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 8px; border-radius: 4px; font-size: 13px; width: 100px; }
+  .controls { display: flex; gap: 8px; }
+  .controls button { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: #30363d; }
+  .controls button.active { background: #388bfd30; border-color: #58a6ff; color: #58a6ff; }
   .stats-bar { display: flex; gap: 16px; padding: 8px 20px; background: #0d1117; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e; align-items: center; }
   .stat { display: flex; align-items: center; gap: 4px; }
   .stat-value { color: #c9d1d9; font-weight: 600; }
@@ -25,13 +36,46 @@
   .channel-tab { padding: 6px 14px; font-size: 12px; color: #8b949e; cursor: pointer; border-bottom: 2px solid transparent; }
   .channel-tab:hover { color: #c9d1d9; }
   .channel-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
-  .filters { display: flex; gap: 8px; flex: 1; }
-  .filters input { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 8px; border-radius: 4px; font-size: 13px; width: 100px; }
-  .controls { display: flex; gap: 8px; }
-  .controls button { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-  .controls button:hover { background: #30363d; }
-  .controls button.active { background: #388bfd30; border-color: #58a6ff; color: #58a6ff; }
-  #feed { padding: 8px; overflow-y: auto; height: calc(100vh - 130px); }
+  #events-view { display: block; }
+  #page-view { display: none; padding: 20px; overflow-y: auto; height: calc(100vh - 50px); }
+  #page-view .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  #page-view .page-title { font-size: 18px; font-weight: 600; color: #58a6ff; }
+  #page-view .page-meta { font-size: 12px; color: #8b949e; }
+  #page-view .page-refresh { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  #page-view .page-refresh:hover { background: #30363d; }
+  #page-view .page-content { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; overflow-x: auto; }
+  #page-view .page-content pre { white-space: pre-wrap; word-wrap: break-word; font-size: 13px; line-height: 1.5; }
+  #page-view .page-content .json-key { color: #79c0ff; }
+  #page-view .page-content .json-string { color: #a5d6ff; }
+  #page-view .page-content .json-number { color: #d2a8ff; }
+  #page-view .page-content .json-bool { color: #ff7b72; }
+  #page-view .page-content .json-null { color: #8b949e; }
+  #page-view .page-error { color: #f85149; font-size: 13px; margin-bottom: 8px; }
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
+  .status-section { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; }
+  .status-section h3 { font-size: 14px; color: #58a6ff; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #30363d; }
+  .status-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .status-row .status-key { color: #8b949e; }
+  .status-row .status-val { color: #c9d1d9; font-weight: 500; text-align: right; }
+  #page-view .md h1 { font-size: 20px; color: #c9d1d9; margin: 16px 0 8px; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
+  #page-view .md h2 { font-size: 16px; color: #c9d1d9; margin: 14px 0 6px; }
+  #page-view .md h3 { font-size: 14px; color: #c9d1d9; margin: 12px 0 4px; }
+  #page-view .md p { margin: 6px 0; line-height: 1.5; }
+  #page-view .md code { background: #0d1117; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+  #page-view .md pre { background: #0d1117; padding: 12px; border-radius: 4px; margin: 8px 0; overflow-x: auto; }
+  #page-view .md pre code { padding: 0; background: none; }
+  #page-view .md ul, #page-view .md ol { margin: 6px 0; padding-left: 24px; }
+  #page-view .md li { margin: 2px 0; }
+  #page-view .md strong { color: #c9d1d9; }
+  #page-view .md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+  #page-view .md th, #page-view .md td { border: 1px solid #30363d; padding: 6px 12px; font-size: 13px; text-align: left; }
+  #page-view .md th { background: #21262d; color: #c9d1d9; font-weight: 600; }
+  #page-view .md tr:hover { background: #161b2280; }
+  #page-view .md hr { border: none; border-top: 1px solid #30363d; margin: 16px 0; }
+  #page-view .md blockquote { border-left: 3px solid #58a6ff; padding-left: 12px; color: #8b949e; margin: 8px 0; }
+  #page-view .md h4 { font-size: 13px; color: #c9d1d9; margin: 10px 0 4px; }
+  #page-view .md ol { margin: 6px 0; padding-left: 24px; list-style: decimal; }
+  #feed { padding: 8px; overflow-y: auto; height: calc(100vh - 170px); }
   .event { margin: 2px 8px; padding: 6px 12px; background: #161b22; border-left: 3px solid #30363d; border-radius: 0 6px 6px 0; font-size: 13px; cursor: pointer; }
   .event:hover { background: #1c2333; }
   .event.level-error { border-left-color: #f85149; }
@@ -60,38 +104,46 @@
 </style>
 </head>
 <body>
-<header>
+<div class="top-bar">
   <h1>eventrelay</h1>
   <span class="badge badge-green" id="count">0</span>
-  <div class="filters">
-    <input id="f-source" placeholder="source" list="dl-source" type="text">
-    <input id="f-channel" placeholder="channel" list="dl-channel" type="text">
-    <input id="f-action" placeholder="action" list="dl-action" type="text">
-    <input id="f-level" placeholder="level" list="dl-level" type="text">
-    <input id="f-agent" placeholder="agent_id" list="dl-agent" type="text">
-  </div>
-  <div class="controls">
-    <button id="btn-pause">Pause</button>
-    <button id="btn-clear">Clear</button>
-  </div>
-</header>
-<div class="stats-bar" id="stats-bar">
-  <div class="sparkline-wrap"><span class="stat-label">rate:</span> <span class="stat-value" id="s-rate">0/s</span> <svg id="sparkline" width="120" height="20"></svg></div>
-  <div class="stat"><span class="stat-label">total:</span> <span class="stat-value" id="s-total">0</span></div>
-  <div class="stat"><span class="stat-label">clients:</span> <span class="stat-value" id="s-clients">0</span></div>
-  <div class="stat" id="s-errors-wrap" style="display:none"><span class="badge badge-red" id="s-errors">0 errors</span></div>
-  <div class="stat" id="s-warns-wrap" style="display:none"><span class="badge badge-yellow" id="s-warns">0 warns</span></div>
-  <div class="sources" id="s-sources"></div>
+  <div class="nav-tab active" data-view="events">Events</div>
+  <div class="nav-tab" data-view="status">Status</div>
+  <!-- additional page tabs inserted here by JS -->
 </div>
-<div class="channel-bar" id="channel-bar">
-  <div class="channel-tab active" data-channel="">all</div>
-</div>
-<div id="feed">
-  <div class="empty" id="empty-msg">
-    Waiting for events...<br><br>
-    POST JSON to <code>/events</code>
+<div id="events-view">
+  <div class="events-toolbar">
+    <div class="filters">
+      <input id="f-source" placeholder="source" list="dl-source" type="text">
+      <input id="f-channel" placeholder="channel" list="dl-channel" type="text">
+      <input id="f-action" placeholder="action" list="dl-action" type="text">
+      <input id="f-level" placeholder="level" list="dl-level" type="text">
+      <input id="f-agent" placeholder="agent_id" list="dl-agent" type="text">
+    </div>
+    <div class="controls">
+      <button id="btn-pause">Pause</button>
+      <button id="btn-clear">Clear</button>
+    </div>
+  </div>
+  <div class="stats-bar" id="stats-bar">
+    <div class="sparkline-wrap"><span class="stat-label">rate:</span> <span class="stat-value" id="s-rate">0/s</span> <svg id="sparkline" width="120" height="20"></svg></div>
+    <div class="stat"><span class="stat-label">total:</span> <span class="stat-value" id="s-total">0</span></div>
+    <div class="stat"><span class="stat-label">clients:</span> <span class="stat-value" id="s-clients">0</span></div>
+    <div class="stat" id="s-errors-wrap" style="display:none"><span class="badge badge-red" id="s-errors">0 errors</span></div>
+    <div class="stat" id="s-warns-wrap" style="display:none"><span class="badge badge-yellow" id="s-warns">0 warns</span></div>
+    <div class="sources" id="s-sources"></div>
+  </div>
+  <div class="channel-bar" id="channel-bar">
+    <div class="channel-tab active" data-channel="">all</div>
+  </div>
+  <div id="feed">
+    <div class="empty" id="empty-msg">
+      Waiting for events...<br><br>
+      POST JSON to <code>/events</code>
+    </div>
   </div>
 </div>
-<script src="app.js"></script>
+<div id="page-view"></div>
+<script src="app.js?v=3"></script>
 </body>
 </html>

@@ -8,6 +8,39 @@ server:
   # token: mysecret
   buffer: 1000
   # log: /var/log/eventrelay/events.jsonl
+  # scripts_dir: /usr/local/share/eventrelay/scripts
+
+pages:
+  # Register local commands as dashboard pages.
+  # Output format: text, json, yaml, or markdown.
+  # Interval controls cache duration (default: 10s).
+  # If scripts_dir is set, scripts there are on PATH automatically.
+  #
+  # Bundled scripts (in scripts/ directory):
+  #   er-system   — machine overview (markdown)
+  #   er-ports    — listening TCP ports (text)
+  #   er-services — running launchd services (text)
+  #   er-brew     — homebrew package status (markdown)
+
+  - name: System
+    command: er-system
+    format: markdown
+    interval: 30s
+
+  - name: Ports
+    command: er-ports
+    format: text
+    interval: 10s
+
+  - name: Services
+    command: er-services
+    format: text
+    interval: 30s
+
+  - name: Homebrew
+    command: er-brew
+    format: markdown
+    interval: 5m
 
 notify:
   # Send errors to Slack

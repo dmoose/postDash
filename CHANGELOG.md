@@ -5,15 +5,29 @@ All notable changes to eventrelay are documented in this file.
 ## Unreleased
 
 ### Added
+- **Pages system** — config-registered shell commands rendered as dashboard tabs (text, JSON, YAML, markdown)
+- Built-in **Status page** with server info, event stats, and config summary
+- **Bundled scripts**: `er-system`, `er-ports`, `er-services`, `er-brew`, `er-example`
+- `scripts_dir` config for PATH management (solves launchd minimal PATH)
+- Markdown renderer with tables, blockquotes, ordered lists, horizontal rules, code blocks
+- **Docker + Caddy deployment** with docker-compose.yml and Caddyfile (TLS + basic auth)
+- Server settings in YAML config (`server.port`, `bind`, `token`, `buffer`, `log`, `scripts_dir`)
 - `eventrelay send` CLI command for emitting events from scripts and the terminal
 - `--version` flag and `version` subcommand with build-time version embedding
 - `POST /events/batch` endpoint for submitting multiple events in a single request
 - `GET /healthz` endpoint returning `{"ok":true,"version":"..."}`
 - CORS preflight (OPTIONS) handling for cross-origin browser clients
 - Graceful shutdown on SIGINT/SIGTERM — drains connections, flushes logs, closes DB
+- `Cache-Control: no-cache` on embedded static files
+- SECURITY.md with threat model for local and network deployments
+- Channel filter input in web dashboard
+- Inline event data display with expandable detail view
+- `make upgrade` and `make restart-service` targets
 
 ### Fixed
 - Server now validates that `source` is present on `POST /events` and `/events/batch`
+- XSS prevention in JSON syntax highlighter (escape before highlight)
+- Log file permissions changed from 0644 to 0600
 
 ## v0.1.0 — Initial Release
 

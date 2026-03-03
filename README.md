@@ -194,6 +194,77 @@ await er.flush();
 
 See [sdks/typescript/README.md](sdks/typescript/README.md) for full TypeScript SDK documentation.
 
+## Pages (command portal)
+
+eventrelay can execute local commands and display their output as dashboard pages. This turns it into a portal for any CLI tool on the system — anything that can produce text, JSON, YAML, or markdown becomes a browser-accessible dashboard tab.
+
+### Configuration
+
+Add a `pages` section to your config file:
+
+```yaml
+server:
+  scripts_dir: /usr/local/share/eventrelay/scripts
+
+pages:
+  - name: System
+    command: er-system
+    format: markdown
+    interval: 30s
+
+  - name: Ports
+    command: er-ports
+    format: text
+    interval: 10s
+
+  - name: Homebrew
+    command: er-brew
+    format: markdown
+    interval: 5m
+```
+
+### Output formats
+
+| Format | Rendering |
+|--------|-----------|
+| `text` | Pre-formatted monospace, HTML-escaped |
+| `json` | Syntax-highlighted with color-coded keys, strings, numbers |
+| `yaml` | Pre-formatted monospace, HTML-escaped |
+| `markdown` | Rendered with headings, bold, code blocks, lists, tables, blockquotes |
+
+### Bundled scripts
+
+The `scripts/` directory contains ready-to-use page scripts, installed to `$PREFIX/share/eventrelay/scripts/` by `make install`:
+
+| Script | Format | Description |
+|--------|--------|-------------|
+| `er-system` | markdown | Machine overview — OS, chip, memory, disk, load, top processes |
+| `er-ports` | text | Listening TCP ports with process names |
+| `er-services` | text | Running launchd user agents (non-Apple) |
+| `er-brew` | markdown | Homebrew status — outdated packages, installed counts |
+| `er-example` | markdown | Demonstrates all markdown rendering features |
+
+### Writing your own scripts
+
+Page scripts are regular shell scripts. They can output any supported format. Set `scripts_dir` in the config so scripts are on PATH automatically (important for launchd services which have a minimal PATH).
+
+```bash
+#!/bin/sh
+# my-script — description
+# Format: markdown
+
+echo "# My Dashboard"
+echo ""
+echo "| Key | Value |"
+echo "|-----|-------|"
+echo "| Time | $(date) |"
+echo "| User | $(whoami) |"
+```
+
+### Security
+
+Commands can only be registered in the config file — there is no API for adding commands at runtime. All output is HTML-escaped before rendering. See [SECURITY.md](SECURITY.md) for the full threat model.
+
 ## Notifications
 
 Create `eventrelay.yaml` (see [eventrelay.example.yaml](eventrelay.example.yaml)):
@@ -274,9 +345,52 @@ After pulling new code, run `make upgrade`. This stops the running service, inst
 
 If you installed via `go install` without the launchd service, stop the running process (`kill $(cat ~/.config/eventrelay/eventrelay.pid)`), then `go install github.com/dmoose/eventrelay@latest` and start again.
 
+## Network / Intranet Deployment
+
+eventrelay has real value as an intranet dashboard — a single URL for your team to see events, system status, and tool output. **Do not expose it to the public internet.**
+
+### Docker + Caddy
+
+The `deploy/` directory contains a ready-to-use setup with Caddy for TLS and optional basic auth:
+
+```bash
+cd deploy
+docker compose up -d
+```
+
+This gives you:
+- eventrelay on port 6060 (internal)
+- Caddy reverse proxy with automatic TLS on ports 80/443
+- Basic auth (optional, see `deploy/Caddyfile`)
+
+Configure the domain in `deploy/Caddyfile` and event token in `deploy/eventrelay.yaml`.
+
+### Recommended network architecture
+
+```
+SDKs/agents → eventrelay:6060 (Bearer token auth)
+Browsers    → Caddy (TLS + basic auth) → eventrelay:6060
+```
+
+- eventrelay handles SDK authentication via `--token`
+- Caddy handles browser authentication via basic auth
+- This separation means SDKs use token auth (no browser needed) while the dashboard is password-protected
+
+See `deploy/Caddyfile` for examples including protecting only the dashboard while leaving the event API open.
+
+## Security
+
+eventrelay is designed for localhost and trusted networks. See [SECURITY.md](SECURITY.md) for the full threat model covering:
+
+- On-device security (localhost default)
+- Network deployment considerations
+- Page command security model
+- XSS prevention in the dashboard
+- What NOT to do
+
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for design details on the ring buffer, SSE fan-out, and notification pipeline.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for design details on the ring buffer, SSE fan-out, notification pipeline, and pages system.
 
 ## License
 

@@ -1,0 +1,24 @@
+#!/bin/sh
+# er-services — running launchd user agents
+# Format: text
+
+printf "%-40s %s\n" "SERVICE" "STATUS"
+printf "%-40s %s\n" "-------" "------"
+
+launchctl list 2>/dev/null | awk 'NR>1 {
+    pid = $1;
+    status = $2;
+    label = $3;
+    # Skip Apple internal services
+    if (label ~ /^com\.apple\./) next;
+    if (label ~ /^\[0x/) next;
+    if (pid == "-") {
+        state = "stopped"
+    } else {
+        state = "running (pid " pid ")"
+    }
+    if (status != "0" && status != "-") {
+        state = state " [exit " status "]"
+    }
+    printf "%-40s %s\n", label, state
+}' | sort

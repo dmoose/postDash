@@ -1,0 +1,15 @@
+#!/bin/sh
+# er-ports — show listening TCP ports with process names
+# Format: text
+
+printf "%-8s %-24s %s\n" "PORT" "PROCESS" "PID"
+printf "%-8s %-24s %s\n" "----" "-------" "---"
+
+lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | awk 'NR>1 {
+    split($9, a, ":");
+    port = a[length(a)];
+    key = port "|" $1 "|" $2;
+    if (!seen[key]++) {
+        printf "%-8s %-24s %s\n", port, $1, $2
+    }
+}' | sort -n

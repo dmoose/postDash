@@ -1,0 +1,54 @@
+#!/bin/sh
+# er-example — demonstrates markdown rendering in eventrelay pages
+# Format: markdown
+#
+# This script shows what's possible with the markdown format.
+# Use it as a template for building your own dashboard pages.
+
+cat << 'MARKDOWN'
+# Dashboard Example
+
+This page demonstrates the markdown rendering capabilities available to eventrelay page scripts.
+
+## Text Formatting
+
+Regular text, **bold text**, and `inline code`.
+
+> Blockquotes work too — useful for callouts or notes.
+
+## Lists
+
+Unordered:
+- First item
+- Second item with **bold**
+- Third item with `code`
+
+Ordered:
+1. Step one
+2. Step two
+3. Step three
+
+## Tables
+
+| Service | Port | Status |
+|---------|------|--------|
+| eventrelay | 6060 | running |
+| postgres | 5432 | running |
+| redis | 6379 | stopped |
+
+## Code Blocks
+
+```
+$ eventrelay send -s demo -a hello -d '{"msg":"world"}'
+sent (seq 42)
+```
+
+## Dynamic Content
+
+Scripts can mix static markdown with dynamic output:
+
+MARKDOWN
+
+printf "**Current time:** %s\n\n" "$(date)"
+printf "**Hostname:** %s\n\n" "$(hostname)"
+printf "**User:** %s\n" "$(whoami)"

@@ -1,0 +1,31 @@
+# eventrelay with Caddy reverse proxy
+# Usage: docker compose up -d
+#
+# Access: https://eventrelay.localhost (or your configured domain)
+# Default: no auth. See Caddyfile comments for basic auth setup.
+
+services:
+  eventrelay:
+    build: ..
+    restart: unless-stopped
+    volumes:
+      - ./eventrelay.yaml:/etc/eventrelay/eventrelay.yaml:ro
+      - ./scripts:/usr/local/share/eventrelay/custom-scripts:ro
+    command: ["--bind", "0.0.0.0", "--port", "6060", "--config", "/etc/eventrelay/eventrelay.yaml"]
+    expose:
+      - "6060"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

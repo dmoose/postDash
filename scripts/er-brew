@@ -1,0 +1,37 @@
+#!/bin/sh
+# er-brew — homebrew package status
+# Format: markdown
+
+# Find brew in common locations
+BREW=""
+for p in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [ -x "$p" ] && BREW="$p" && break
+done
+
+if [ -z "$BREW" ]; then
+    echo "Homebrew not found"
+    exit 0
+fi
+
+echo "# Homebrew Status"
+echo ""
+
+outdated=$("$BREW" outdated 2>/dev/null)
+if [ -n "$outdated" ]; then
+    count=$(echo "$outdated" | wc -l | tr -d ' ')
+    echo "## Outdated ($count)"
+    echo ""
+    echo '```'
+    echo "$outdated"
+    echo '```'
+else
+    echo "All packages up to date."
+fi
+
+echo ""
+echo "## Installed"
+echo ""
+total=$("$BREW" list --formula 2>/dev/null | wc -l | tr -d ' ')
+casks=$("$BREW" list --cask 2>/dev/null | wc -l | tr -d ' ')
+echo "- **$total** formulae"
+echo "- **$casks** casks"

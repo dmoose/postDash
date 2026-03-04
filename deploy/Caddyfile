@@ -1,0 +1,39 @@
+# eventrelay reverse proxy configuration
+#
+# For local/intranet use, replace the domain with your hostname or IP.
+# Caddy auto-provisions TLS for public domains. For internal domains,
+# it generates a self-signed cert (browsers will warn on first visit).
+
+eventrelay.localhost {
+	reverse_proxy eventrelay:6060
+}
+
+# --- Basic auth (optional) ---
+# Uncomment to require a username/password for the dashboard and pages.
+# The event POST API uses Bearer token auth (configured in eventrelay.yaml),
+# so basic auth protects the browser UI without affecting SDK clients.
+#
+# To generate a password hash: docker run caddy caddy hash-password
+#
+# eventrelay.localhost {
+#     basicauth * {
+#         admin $2a$14$...hashed_password_here...
+#     }
+#     reverse_proxy eventrelay:6060
+# }
+
+# --- Separate auth for dashboard vs API (advanced) ---
+# Protect the dashboard while leaving the API open for SDKs:
+#
+# eventrelay.localhost {
+#     basicauth /api/pages/* /api/status {
+#         admin $2a$14$...hashed_password_here...
+#     }
+#     @dashboard {
+#         not path /events* /healthz
+#     }
+#     basicauth @dashboard {
+#         admin $2a$14$...hashed_password_here...
+#     }
+#     reverse_proxy eventrelay:6060
+# }

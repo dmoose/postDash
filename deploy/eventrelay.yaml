@@ -1,0 +1,20 @@
+# Docker deployment config
+# Mount custom scripts to /usr/local/share/eventrelay/custom-scripts/
+
+server:
+  port: 6060
+  bind: 0.0.0.0
+  # token: change-me-in-production
+  buffer: 1000
+  scripts_dir: /usr/local/share/eventrelay/scripts
+
+pages:
+  - name: System
+    command: er-system
+    format: markdown
+    interval: 30s
+
+  - name: Ports
+    command: er-ports
+    format: text
+    interval: 10s

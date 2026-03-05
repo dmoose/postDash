@@ -1,6 +1,9 @@
 # eventrelay
 
 [![CI](https://github.com/dmoose/eventrelay/actions/workflows/ci.yml/badge.svg)](https://github.com/dmoose/eventrelay/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dmoose/eventrelay?sort=semver)](https://github.com/dmoose/eventrelay/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dmoose/eventrelay.svg)](https://pkg.go.dev/github.com/dmoose/eventrelay)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dmoose/eventrelay)](https://goreportcard.com/report/github.com/dmoose/eventrelay)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A lightweight real-time event streaming service. Any tool that can POST JSON gets a live dashboard — browser UI, TUI, or both.

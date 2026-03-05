@@ -125,7 +125,7 @@ export class Client {
     this.post(evt);
   }
 
-  private post(payload: Record<string, unknown>): void {
+  private post(payload: Event): void {
     // Remove empty string values
     const clean = Object.fromEntries(
       Object.entries(payload).filter(([, v]) => v !== "" && v !== undefined)

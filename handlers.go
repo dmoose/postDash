@@ -22,11 +22,7 @@ func postEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.Ha
 			return
 		}
 
-		// Validate source is present
-		var check struct {
-			Source string `json:"source"`
-		}
-		if err := json.Unmarshal(body, &check); err == nil && check.Source == "" {
+		if eventSourceMissing(body) {
 			http.Error(w, "source is required", http.StatusBadRequest)
 			return
 		}
@@ -74,11 +70,9 @@ func batchEventHandler(hub *Hub, logWriter io.Writer, notifier *Notifier) http.H
 
 		seqs := make([]uint64, 0, len(rawEvents))
 		for i, raw := range rawEvents {
-			// Validate source
-			var check struct {
-				Source string `json:"source"`
-			}
-			if err := json.Unmarshal(raw, &check); err == nil && check.Source == "" {
+			// Sequential non-atomic processing: prior valid events remain accepted
+			// if a later event in the same batch is invalid.
+			if eventSourceMissing(raw) {
 				http.Error(w, fmt.Sprintf("event %d: source is required", i), http.StatusBadRequest)
 				return
 			}

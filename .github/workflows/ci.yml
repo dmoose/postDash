@@ -49,3 +49,27 @@ jobs:
             git diff
             exit 1
           fi
+
+  sdk-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python SDK tests (stdlib unittest)
+        run: PYTHONPATH=sdks/python python -m unittest discover -s sdks/python/tests -p "test_*.py"
+
+  sdk-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install TypeScript SDK dependencies
+        run: npm --prefix sdks/typescript install
+      - name: TypeScript SDK compile check
+        run: npm --prefix sdks/typescript test

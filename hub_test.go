@@ -33,6 +33,36 @@ func TestPublishAndRecent(t *testing.T) {
 	}
 }
 
+func TestMatchesEventSharedHelper(t *testing.T) {
+	evt := Event{
+		Source:  "app",
+		Channel: "ops",
+		Action:  "deploy",
+		Level:   "error",
+		AgentID: "agent-1",
+	}
+	if !matchesEvent("app", "ops", "deploy", "error", "agent-1", evt) {
+		t.Fatal("expected full match to succeed")
+	}
+	if matchesEvent("app", "ops", "deploy", "info", "agent-1", evt) {
+		t.Fatal("expected mismatched level to fail")
+	}
+}
+
+func TestBufferUsage(t *testing.T) {
+	hub := NewHub(3)
+	used, cap := hub.BufferUsage()
+	if used != 0 || cap != 3 {
+		t.Fatalf("expected initial usage 0/3, got %d/%d", used, cap)
+	}
+	_, _ = hub.Publish(json.RawMessage(`{"source":"a"}`))
+	_, _ = hub.Publish(json.RawMessage(`{"source":"b"}`))
+	used, cap = hub.BufferUsage()
+	if used != 2 || cap != 3 {
+		t.Fatalf("expected usage 2/3, got %d/%d", used, cap)
+	}
+}
+
 func TestRingBufferOverflow(t *testing.T) {
 	hub := NewHub(3)
 	for i := range 5 {

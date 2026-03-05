@@ -132,6 +132,8 @@ Events are JSON objects posted to `POST /events`:
 
 SSE and recent endpoints accept filter params: `?source=x&channel=y&level=error&action=z&agent_id=a`
 
+`POST /events/batch` is processed sequentially and is non-atomic: if a later event is invalid, earlier valid events in the same batch may already be accepted.
+
 ## SDKs
 
 ### Go

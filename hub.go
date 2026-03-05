@@ -60,22 +60,7 @@ type Filter struct {
 }
 
 func (f Filter) matches(e Event) bool {
-	if f.Source != "" && e.Source != f.Source {
-		return false
-	}
-	if f.Channel != "" && e.Channel != f.Channel {
-		return false
-	}
-	if f.Action != "" && e.Action != f.Action {
-		return false
-	}
-	if f.Level != "" && e.Level != f.Level {
-		return false
-	}
-	if f.AgentID != "" && e.AgentID != f.AgentID {
-		return false
-	}
-	return true
+	return matchesEvent(f.Source, f.Channel, f.Action, f.Level, f.AgentID, e)
 }
 
 // NewHub creates a Hub with the given ring buffer size.
@@ -199,6 +184,13 @@ func (h *Hub) Channels() []string {
 		channels = append(channels, ch)
 	}
 	return channels
+}
+
+// BufferUsage returns current ring occupancy and configured max size.
+func (h *Hub) BufferUsage() (used int, capacity int) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.ring), h.maxSize
 }
 
 func copyMap(m map[string]uint64) map[string]uint64 {

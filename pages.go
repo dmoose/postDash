@@ -53,7 +53,7 @@ func NewPageRunner(pages []PageConf, scriptsDir string) *PageRunner {
 				d = parsed
 			}
 		}
-		pr.interval[p.Name] = d
+		pr.interval[pageSlug(p.Name)] = d
 	}
 	return pr
 }
@@ -198,12 +198,13 @@ func statusPageHandler(hub *Hub, notifier *Notifier, cfg *Config, startTime time
 			},
 		}
 
+		bufferUsed, bufferMax := hub.BufferUsage()
 		events := statusSection{
 			Title: "Events",
 			Items: [][]string{
 				{"Total Events", fmt.Sprintf("%d", stats.TotalEvents)},
 				{"Rate", fmt.Sprintf("%.1f/s", stats.RecentRate)},
-				{"Buffer", fmt.Sprintf("%d / %d", len(hub.ring), hub.maxSize)},
+				{"Buffer", fmt.Sprintf("%d / %d", bufferUsed, bufferMax)},
 				{"SSE Clients", fmt.Sprintf("%d", stats.ClientCount)},
 			},
 		}

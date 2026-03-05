@@ -36,6 +36,26 @@ func TestPostEventRequiresSource(t *testing.T) {
 	}
 }
 
+func TestEventSourceMissing(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{name: "valid source", raw: `{"source":"app"}`, want: false},
+		{name: "empty source", raw: `{"source":""}`, want: true},
+		{name: "whitespace source", raw: `{"source":"   "}`, want: true},
+		{name: "invalid json", raw: `{`, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := eventSourceMissing([]byte(tt.raw)); got != tt.want {
+				t.Fatalf("eventSourceMissing(%q) = %v, want %v", tt.raw, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestBatchEventHandler(t *testing.T) {
 	hub := NewHub(100)
 	handler := batchEventHandler(hub, nil, nil)

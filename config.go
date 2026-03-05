@@ -47,22 +47,7 @@ type MatchRule struct {
 
 // Matches returns true if the event satisfies this rule.
 func (m MatchRule) Matches(e Event) bool {
-	if m.Source != "" && e.Source != m.Source {
-		return false
-	}
-	if m.Channel != "" && e.Channel != m.Channel {
-		return false
-	}
-	if m.Action != "" && e.Action != m.Action {
-		return false
-	}
-	if m.Level != "" && e.Level != m.Level {
-		return false
-	}
-	if m.AgentID != "" && e.AgentID != m.AgentID {
-		return false
-	}
-	return true
+	return matchesEvent(m.Source, m.Channel, m.Action, m.Level, m.AgentID, e)
 }
 
 // Webhook sends a POST with the event JSON to a URL.
@@ -83,8 +68,8 @@ type DiscordConf struct {
 
 // DatabaseConf configures database storage for matched events.
 type DatabaseConf struct {
-	Driver string `yaml:"driver"` // "sqlite", "postgres", "mysql"
-	DSN    string `yaml:"dsn"`    // connection string or file path
+	Driver string `yaml:"driver"` // sqlite (optional; defaults to sqlite)
+	DSN    string `yaml:"dsn"`    // sqlite file path
 	Table  string `yaml:"table"`  // table name (default "events")
 }
 

@@ -23,6 +23,23 @@ make test     # Run tests with race detector
 4. Run `make test` to ensure all tests pass
 5. Submit a pull request
 
+## SDK Validation
+
+Python and TypeScript SDK checks run in CI by default, so local npm/pytest setup is not required.
+
+- Python SDK tests use stdlib `unittest`
+- TypeScript SDK check compiles the SDK (`npm test` in `sdks/typescript`)
+
+If you want to run SDK checks locally without installing Python/npm toolchains directly, use containers:
+
+```bash
+docker run --rm -v "$PWD":/work -w /work python:3.12 \
+  sh -lc 'PYTHONPATH=sdks/python python -m unittest discover -s sdks/python/tests -p "test_*.py"'
+
+docker run --rm -v "$PWD":/work -w /work node:20 \
+  sh -lc 'npm --prefix sdks/typescript install && npm --prefix sdks/typescript test'
+```
+
 ## Code Style
 
 - Follow standard Go conventions (`gofmt`, `go vet`)

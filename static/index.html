@@ -75,30 +75,41 @@
   #page-view .md blockquote { border-left: 3px solid #58a6ff; padding-left: 12px; color: #8b949e; margin: 8px 0; }
   #page-view .md h4 { font-size: 13px; color: #c9d1d9; margin: 10px 0 4px; }
   #page-view .md ol { margin: 6px 0; padding-left: 24px; list-style: decimal; }
-  #feed { padding: 8px; overflow-y: auto; height: calc(100vh - 170px); }
-  .event { margin: 2px 8px; padding: 6px 12px; background: #161b22; border-left: 3px solid #30363d; border-radius: 0 6px 6px 0; font-size: 13px; cursor: pointer; }
+  #feed { padding: 0 8px 8px; overflow-y: auto; height: calc(100vh - 170px); }
+  .col-header { display: grid; grid-template-columns: 50px 90px 70px 100px 120px 60px 1fr 90px 40px 28px; gap: 0 8px; padding: 6px 12px 4px; margin: 0 8px; font-size: 11px; color: #484f58; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #21262d; position: sticky; top: 0; background: #0d1117; z-index: 1; }
+  .col-header span:nth-child(6) { text-align: right; }
+  .col-header span:nth-child(8) { text-align: right; }
+  .col-header span:nth-child(9) { text-align: right; }
+  .event { margin: 0 8px; padding: 0; background: #161b22; border-left: 3px solid #30363d; font-size: 13px; }
   .event:hover { background: #1c2333; }
   .event.level-error { border-left-color: #f85149; }
   .event.level-warn { border-left-color: #d29922; }
   .event.level-info { border-left-color: #58a6ff; }
   .event.level-debug { border-left-color: #8b949e; }
-  .event .row { display: flex; align-items: baseline; gap: 8px; }
-  .event .fields { display: flex; gap: 8px; align-items: baseline; flex-shrink: 0; }
-  .event .source { color: #58a6ff; font-weight: 600; }
-  .event .channel { color: #bc8cff; }
-  .event .action { color: #d2a8ff; }
-  .event .agent { color: #7ee787; font-size: 12px; }
-  .event .level { font-size: 11px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; }
+  .event .row { display: grid; grid-template-columns: 50px 90px 70px 100px 120px 60px 1fr 90px 40px 28px; gap: 0 8px; align-items: baseline; padding: 4px 12px; }
+  .event .source { color: #58a6ff; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .channel { color: #bc8cff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .action { color: #d2a8ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .agent { color: #7ee787; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .seq { color: #6e7681; font-size: 12px; white-space: nowrap; text-align: right; }
+  .event .level { font-size: 11px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; display: inline-block; }
   .level-error .level { background: #f8514920; color: #f85149; }
   .level-warn .level { background: #d2992220; color: #d29922; }
   .level-info .level { background: #58a6ff20; color: #58a6ff; }
   .level-debug .level { background: #8b949e20; color: #8b949e; }
-  .event .duration { color: #d2a8ff; font-size: 12px; }
-  .event .inline-data { color: #6e7681; font-size: 12px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .event .time { color: #8b949e; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
-  .event .detail { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid #30363d; white-space: pre-wrap; font-size: 12px; color: #8b949e; }
+  .event .duration { color: #d2a8ff; font-size: 12px; text-align: right; white-space: nowrap; }
+  .event .inline-data { color: #6e7681; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .time { color: #8b949e; font-size: 12px; white-space: nowrap; text-align: right; }
+  .event .inspect-btn { width: 22px; height: 18px; background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 3px; cursor: pointer; font-size: 10px; line-height: 16px; text-align: center; padding: 0; flex-shrink: 0; }
+  .event .inspect-btn:hover { background: #30363d; color: #c9d1d9; border-color: #58a6ff; }
+  .event .detail { display: none; margin: 0 12px 6px; padding: 6px 8px; border-top: 1px solid #30363d; white-space: pre-wrap; font-size: 12px; color: #8b949e; background: #0d1117; border-radius: 0 0 4px 4px; }
+  .event .detail .json-key { color: #79c0ff; }
+  .event .detail .json-string { color: #a5d6ff; }
+  .event .detail .json-number { color: #d2a8ff; }
+  .event .detail .json-bool { color: #ff7b72; }
+  .event .detail .json-null { color: #8b949e; }
   .event.expanded .detail { display: block; }
-  .event.expanded .inline-data { display: none; }
+  .event.expanded .inline-data { visibility: hidden; }
   .empty { text-align: center; padding: 60px 20px; color: #8b949e; }
   .empty code { background: #161b22; padding: 2px 6px; border-radius: 4px; }
 </style>
@@ -137,6 +148,9 @@
     <div class="channel-tab active" data-channel="">all</div>
   </div>
   <div id="feed">
+    <div class="col-header">
+      <span>Level</span><span>Source</span><span>Channel</span><span>Agent</span><span>Action</span><span>Dur</span><span>Data</span><span>Time</span><span>#</span><span></span>
+    </div>
     <div class="empty" id="empty-msg">
       Waiting for events...<br><br>
       POST JSON to <code>/events</code>
@@ -144,6 +158,6 @@
   </div>
 </div>
 <div id="page-view"></div>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

@@ -255,7 +255,7 @@ function addEvent(evt) {
   const div = document.createElement('div');
   const level = evt.level || 'info';
   div.className = 'event level-' + level;
-  div.onclick = () => div.classList.toggle('expanded');
+  div.onclick = (e) => { if (e.target.classList.contains('inspect-btn')) { e.stopPropagation(); div.classList.toggle('expanded'); } };
   div.dataset.source = evt.source || '';
   div.dataset.channel = evt.channel || '';
   div.dataset.action = evt.action || '';
@@ -263,26 +263,23 @@ function addEvent(evt) {
   div.dataset.agent = evt.agent_id || '';
 
   const ts = new Date(evt.ts).toLocaleTimeString();
-  const fields = [`<span class="source">${esc(evt.source || '?')}</span>`];
-  if (evt.channel) fields.push(`<span class="channel">${esc(evt.channel)}</span>`);
-  if (evt.action) fields.push(`<span class="action">${esc(evt.action)}</span>`);
-  fields.push(`<span class="level">${esc(level)}</span>`);
-  if (evt.agent_id) fields.push(`<span class="agent">${esc(evt.agent_id)}</span>`);
-  if (evt.duration_ms != null) fields.push(`<span class="duration">${evt.duration_ms}ms</span>`);
 
   const data = evt.data || {};
   const dataStr = Object.keys(data).length > 0 ? JSON.stringify(data) : '';
-  const inlineData = dataStr && dataStr.length < 200
-    ? `<span class="inline-data">${esc(dataStr)}</span>`
-    : (dataStr ? '<span class="inline-data">{ ... }</span>' : '');
-
-  const detail = dataStr ? esc(JSON.stringify(data, null, 2)) : '';
+  const detail = dataStr ? syntaxHighlightJSON(data) : '';
 
   div.innerHTML = `
     <div class="row">
-      <span class="fields">${fields.join(' ')}</span>
-      ${inlineData}
-      <span class="time">#${evt.seq} ${ts}</span>
+      <span class="level">${esc(level)}</span>
+      <span class="source" title="${esc(evt.source || '')}">${esc(evt.source || '')}</span>
+      <span class="channel" title="${esc(evt.channel || '')}">${esc(evt.channel || '')}</span>
+      <span class="agent" title="${esc(evt.agent_id || '')}">${esc(evt.agent_id || '')}</span>
+      <span class="action" title="${esc(evt.action || '')}">${esc(evt.action || '')}</span>
+      <span class="duration">${evt.duration_ms != null ? (evt.duration_ms >= 500 ? (evt.duration_ms / 1000).toFixed(1) + 's' : evt.duration_ms + 'ms') : ''}</span>
+      <span class="inline-data" title="${esc(dataStr)}">${esc(dataStr)}</span>
+      <span class="time">${ts}</span>
+      <span class="seq">${evt.seq}</span>
+      <button class="inspect-btn" title="Inspect">&#9776;</button>
     </div>
     ${detail ? `<div class="detail">${detail}</div>` : ''}
   `;

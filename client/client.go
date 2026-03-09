@@ -128,18 +128,84 @@ func (c *Client) Timed(action string, data map[string]any) func(map[string]any) 
 	}
 }
 
+// LogEntry is the payload sent to the /log endpoint.
+type LogEntry struct {
+	Level   string         `json:"level"`
+	Message string         `json:"message"`
+	Logger  string         `json:"logger,omitempty"`
+	Fields  map[string]any `json:"fields,omitempty"`
+	Caller  string         `json:"caller,omitempty"`
+	TS      time.Time      `json:"ts"`
+}
+
+// Log sends a structured log entry to the /log endpoint. Fire-and-forget.
+func (c *Client) Log(level, message string, fields map[string]any) {
+	c.log(LogEntry{
+		Level:   level,
+		Message: message,
+		Logger:  c.source,
+		Fields:  fields,
+		TS:      time.Now(),
+	})
+}
+
+// LogInfo sends an info-level log entry.
+func (c *Client) LogInfo(message string, fields map[string]any) {
+	c.Log("info", message, fields)
+}
+
+// LogError sends an error-level log entry.
+func (c *Client) LogError(message string, fields map[string]any) {
+	c.Log("error", message, fields)
+}
+
+// LogWarn sends a warn-level log entry.
+func (c *Client) LogWarn(message string, fields map[string]any) {
+	c.Log("warn", message, fields)
+}
+
+// LogDebug sends a debug-level log entry.
+func (c *Client) LogDebug(message string, fields map[string]any) {
+	c.Log("debug", message, fields)
+}
+
+func (c *Client) log(entry LogEntry) {
+	if c.url == "" {
+		return
+	}
+	c.sendTo(c.logURL(), entry)
+}
+
+func (c *Client) logURL() string {
+	// url is the base events URL (e.g. http://localhost:6060/events)
+	// Derive the log URL by replacing the path.
+	if len(c.url) > 0 {
+		// Find the last slash before any path component
+		for i := len(c.url) - 1; i >= 0; i-- {
+			if c.url[i] == '/' && i > 7 { // skip "http://" prefix
+				return c.url[:i] + "/log"
+			}
+		}
+	}
+	return c.url + "/log"
+}
+
 // Flush waits for all pending events to be sent.
 func (c *Client) Flush() {
 	c.wg.Wait()
 }
 
 func (c *Client) send(evt Event) {
+	c.sendTo(c.url, evt)
+}
+
+func (c *Client) sendTo(url string, payload any) {
 	c.wg.Go(func() {
-		body, err := json.Marshal(evt)
+		body, err := json.Marshal(payload)
 		if err != nil {
 			return
 		}
-		resp, err := c.http.Post(c.url, "application/json", bytes.NewReader(body))
+		resp, err := c.http.Post(url, "application/json", bytes.NewReader(body))
 		if err != nil {
 			return
 		}

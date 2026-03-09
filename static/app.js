@@ -12,6 +12,7 @@ const channelBar = document.getElementById('channel-bar');
 const sparklineSvg = document.getElementById('sparkline');
 const topBar = document.querySelector('.top-bar');
 const eventsView = document.getElementById('events-view');
+const logsView = document.getElementById('logs-view');
 const pageView = document.getElementById('page-view');
 
 const sRate = document.getElementById('s-rate');
@@ -39,14 +40,14 @@ function switchView(view, slug) {
     t.classList.toggle('active', t.dataset.view === view && t.dataset.slug === (slug || ''));
   });
 
-  if (view === 'events') {
-    eventsView.style.display = 'block';
-    pageView.style.display = 'none';
-    countBadge.style.display = '';
-  } else {
-    eventsView.style.display = 'none';
-    pageView.style.display = 'block';
-    countBadge.style.display = 'none';
+  eventsView.style.display = view === 'events' ? 'block' : 'none';
+  logsView.style.display = view === 'logs' ? 'block' : 'none';
+  pageView.style.display = (view !== 'events' && view !== 'logs') ? 'block' : 'none';
+  countBadge.style.display = view === 'events' ? '' : 'none';
+
+  if (view === 'logs') {
+    if (!logSSEConnected) connectLogSSE();
+  } else if (view !== 'events' && view !== 'logs') {
     loadPage(view, slug);
   }
 }
@@ -225,6 +226,7 @@ function loadNav() {
 
 // Wire up static nav tabs
 topBar.querySelector('[data-view="events"]').onclick = () => switchView('events');
+topBar.querySelector('[data-view="logs"]').onclick = () => switchView('logs');
 topBar.querySelector('[data-view="status"]').onclick = () => switchView('status');
 
 // --- SSE ---
@@ -444,9 +446,260 @@ btnClear.onclick = () => {
   input.addEventListener('input', applyFilters);
 });
 
+// --- Logs tab ---
+
+const logFeed = document.getElementById('log-feed');
+const logEmptyMsg = document.getElementById('log-empty-msg');
+const logBtnPause = document.getElementById('log-btn-pause');
+const logBtnClear = document.getElementById('log-btn-clear');
+const lfLevel = document.getElementById('lf-level');
+const lfLogger = document.getElementById('lf-logger');
+const lfSearch = document.getElementById('lf-search');
+const lsAccepted = document.getElementById('ls-accepted');
+const lsGated = document.getElementById('ls-gated');
+const lsMinLevel = document.getElementById('ls-min-level');
+const lsErrors = document.getElementById('ls-errors');
+const lsErrorsWrap = document.getElementById('ls-errors-wrap');
+
+const logSparklineSvg = document.getElementById('log-sparkline');
+const lsRate = document.getElementById('ls-rate');
+
+let logCount = 0;
+let logPaused = false;
+let logES = null;
+let logSSEConnected = false;
+const logSeen = { level: new Set(), logger: new Set() };
+
+function connectLogSSE() {
+  if (logES) logES.close();
+  logES = new EventSource('/logs/stream');
+  logES.onmessage = (e) => {
+    if (logPaused) return;
+    addLog(JSON.parse(e.data));
+  };
+  logES.onerror = () => setTimeout(connectLogSSE, 2000);
+  logSSEConnected = true;
+}
+
+function addLog(entry) {
+  logEmptyMsg.style.display = 'none';
+  logCount++;
+
+  if (entry.level) logSeen.level.add(entry.level);
+  if (entry.logger) logSeen.logger.add(entry.logger);
+  updateLogDataLists();
+
+  const div = document.createElement('div');
+  const level = entry.level || 'info';
+  div.className = 'log-entry level-' + level;
+  div.dataset.level = level;
+  div.dataset.logger = entry.logger || '';
+  div.dataset.message = (entry.message || '').toLowerCase();
+
+  const ts = new Date(entry.ts).toLocaleTimeString();
+  const fields = entry.fields || {};
+  const fieldsStr = Object.keys(fields).length > 0 ? JSON.stringify(fields) : '';
+
+  let detailParts = [];
+  if (entry.message) detailParts.push(`<div class="detail-message">${esc(entry.message)}</div>`);
+  if (entry.caller) detailParts.push(`<div class="detail-caller">${esc(entry.caller)}</div>`);
+  if (fieldsStr) detailParts.push(`<pre>${syntaxHighlightJSON(fields)}</pre>`);
+
+  div.innerHTML = `
+    <div class="row">
+      <span class="level">${esc(level)}</span>
+      <span class="logger" title="${esc(entry.logger || '')}">${esc(entry.logger || '')}</span>
+      <span class="message" title="${esc(entry.message || '')}">${esc(entry.message || '')}</span>
+      <span class="time">${ts}</span>
+      <span class="seq">${entry.seq}</span>
+      <button class="inspect-btn" title="Inspect">&#9776;</button>
+    </div>
+    ${detailParts.length ? `<div class="detail">${detailParts.join('')}</div>` : ''}
+  `;
+
+  div.onclick = (e) => { if (e.target.classList.contains('inspect-btn')) { e.stopPropagation(); div.classList.toggle('expanded'); } };
+
+  logFeed.insertBefore(div, logEmptyMsg.nextSibling);
+  applyLogFilterToElement(div);
+
+  while (logFeed.querySelectorAll('.log-entry').length > 500) {
+    const entries = logFeed.querySelectorAll('.log-entry');
+    entries[entries.length - 1].remove();
+  }
+}
+
+function getLogFilters() {
+  return {
+    level: lfLevel.value.toLowerCase(),
+    logger: lfLogger.value.toLowerCase(),
+    search: lfSearch.value.toLowerCase(),
+  };
+}
+
+function applyLogFilterToElement(el) {
+  const f = getLogFilters();
+  const show =
+    (!f.level || el.dataset.level === f.level) &&
+    (!f.logger || el.dataset.logger.toLowerCase().includes(f.logger)) &&
+    (!f.search || el.dataset.message.includes(f.search));
+  el.style.display = show ? '' : 'none';
+}
+
+function applyLogFilters() {
+  logFeed.querySelectorAll('.log-entry').forEach(applyLogFilterToElement);
+}
+
+[lfLevel, lfLogger, lfSearch].forEach(input => {
+  input.addEventListener('input', applyLogFilters);
+});
+
+logBtnPause.onclick = () => {
+  logPaused = !logPaused;
+  logBtnPause.textContent = logPaused ? 'Resume' : 'Pause';
+  logBtnPause.classList.toggle('active', logPaused);
+};
+
+logBtnClear.onclick = () => {
+  logFeed.querySelectorAll('.log-entry').forEach(e => e.remove());
+  logCount = 0;
+};
+
+function updateLogDataLists() {
+  updateDataList('dl-log-level', logSeen.level);
+  updateDataList('dl-log-logger', logSeen.logger);
+}
+
+function renderLogSparkline(data) {
+  const w = 120, h = 20;
+  const max = Math.max(...data, 1);
+  const step = w / (data.length - 1 || 1);
+  const points = data.map((v, i) => `${i * step},${h - (v / max) * (h - 2) - 1}`).join(' ');
+  logSparklineSvg.innerHTML = `
+    <polyline points="${points}" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-linejoin="round"/>
+    <polyline points="0,${h} ${points} ${w},${h}" fill="#58a6ff10" stroke="none"/>
+  `;
+}
+
+function pollLogSparkline() {
+  fetch('/logs/rate?buckets=30&minutes=5')
+    .then(r => r.json())
+    .then(data => { if (data && data.length) renderLogSparkline(data); })
+    .catch(() => {});
+}
+
+function pollLogStats() {
+  fetch('/logs/stats')
+    .then(r => r.json())
+    .then(stats => {
+      lsRate.textContent = stats.logs_per_second.toFixed(1) + '/s';
+      lsAccepted.textContent = stats.accepted.toLocaleString();
+      lsGated.textContent = stats.gated.toLocaleString();
+      lsMinLevel.textContent = stats.min_level;
+      const errors = stats.by_level?.error || 0;
+      lsErrorsWrap.style.display = errors > 0 ? '' : 'none';
+      if (errors > 0) lsErrors.textContent = errors + ' error' + (errors !== 1 ? 's' : '');
+    })
+    .catch(() => {});
+}
+
+// --- Export ---
+
+// Toggle menus
+document.getElementById('btn-export').onclick = () => {
+  document.getElementById('export-menu').classList.toggle('open');
+  document.getElementById('log-export-menu').classList.remove('open');
+};
+document.getElementById('log-btn-export').onclick = () => {
+  document.getElementById('log-export-menu').classList.toggle('open');
+  document.getElementById('export-menu').classList.remove('open');
+};
+// Close on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.export-wrap')) {
+    document.querySelectorAll('.export-menu').forEach(m => m.classList.remove('open'));
+  }
+});
+
+function doExport(type, action) {
+  const isLogs = type === 'logs';
+  const format = document.getElementById(isLogs ? 'log-exp-format' : 'exp-format').value;
+  const count = document.getElementById(isLogs ? 'log-exp-count' : 'exp-count').value;
+  const copiedEl = document.getElementById(isLogs ? 'log-exp-copied' : 'exp-copied');
+
+  // Build URL with current filters
+  const params = new URLSearchParams({ n: count });
+  if (isLogs) {
+    if (lfLevel.value) params.set('level', lfLevel.value);
+  } else {
+    if (fSource.value) params.set('source', fSource.value);
+    if (fChannel.value || activeChannel) params.set('channel', fChannel.value || activeChannel);
+    if (fAction.value) params.set('action', fAction.value);
+    if (fLevel.value) params.set('level', fLevel.value);
+    if (fAgent.value) params.set('agent_id', fAgent.value);
+  }
+
+  const url = isLogs ? '/logs/recent' : '/events/recent';
+  fetch(`${url}?${params}`)
+    .then(r => r.json())
+    .then(data => {
+      const output = formatExport(data, format);
+      const ext = format === 'csv' ? 'csv' : (format === 'jsonl' ? 'jsonl' : 'json');
+      const mime = format === 'csv' ? 'text/csv' : 'application/json';
+      const filename = `${type}-export-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.${ext}`;
+
+      if (action === 'copy') {
+        navigator.clipboard.writeText(output).then(() => {
+          copiedEl.style.display = 'block';
+          copiedEl.textContent = `Copied ${data.length} ${type}!`;
+          setTimeout(() => { copiedEl.style.display = 'none'; }, 2000);
+        });
+      } else {
+        const blob = new Blob([output], { type: mime });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        // Close menu after download
+        document.querySelectorAll('.export-menu').forEach(m => m.classList.remove('open'));
+      }
+    })
+    .catch(err => {
+      copiedEl.style.display = 'block';
+      copiedEl.textContent = 'Export failed';
+      copiedEl.style.color = '#f85149';
+      setTimeout(() => { copiedEl.style.display = 'none'; copiedEl.style.color = ''; }, 2000);
+    });
+}
+
+function formatExport(data, format) {
+  if (format === 'json') return JSON.stringify(data, null, 2);
+  if (format === 'jsonl') return data.map(d => JSON.stringify(d)).join('\n');
+  // CSV
+  if (!data.length) return '';
+  const keys = Object.keys(data[0]);
+  const rows = [keys.join(',')];
+  for (const item of data) {
+    rows.push(keys.map(k => {
+      const v = item[k];
+      if (v == null) return '';
+      if (typeof v === 'object') return '"' + JSON.stringify(v).replace(/"/g, '""') + '"';
+      const s = String(v);
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(','));
+  }
+  return rows.join('\n');
+}
+
 // --- Bootstrap ---
 
 loadNav();
+
+// Load recent logs in background
+fetch('/logs/recent?n=50')
+  .then(r => r.json())
+  .then(entries => { if (entries && entries.length) entries.forEach(addLog); })
+  .catch(() => {});
 
 fetch('/events/recent?n=50')
   .then(r => r.json())
@@ -455,11 +708,17 @@ fetch('/events/recent?n=50')
     connectSSE();
     pollStats();
     pollSparkline();
+    pollLogStats();
+    pollLogSparkline();
     setInterval(pollStats, 3000);
     setInterval(pollSparkline, 5000);
+    setInterval(pollLogStats, 3000);
+    setInterval(pollLogSparkline, 5000);
   })
   .catch(() => {
     connectSSE();
     setInterval(pollStats, 3000);
     setInterval(pollSparkline, 5000);
+    setInterval(pollLogStats, 3000);
+    setInterval(pollLogSparkline, 5000);
   });

@@ -110,6 +110,51 @@
   .event .detail .json-null { color: #8b949e; }
   .event.expanded .detail { display: block; }
   .event.expanded .inline-data { visibility: hidden; }
+  /* --- Logs tab --- */
+  #logs-view { display: none; }
+  #log-feed { padding: 0 8px 8px; overflow-y: auto; height: calc(100vh - 130px); }
+  .log-col-header { display: grid; grid-template-columns: 50px 120px 1fr 90px 40px 28px; gap: 0 8px; padding: 6px 12px 4px; margin: 0 8px; font-size: 11px; color: #484f58; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #21262d; position: sticky; top: 0; background: #0d1117; z-index: 1; }
+  .log-col-header span:nth-child(4) { text-align: right; }
+  .log-col-header span:nth-child(5) { text-align: right; }
+  .log-entry { margin: 0 8px; padding: 0; background: #161b22; border-left: 3px solid #30363d; font-size: 13px; }
+  .log-entry:hover { background: #1c2333; }
+  .log-entry.level-error { border-left-color: #f85149; }
+  .log-entry.level-warn { border-left-color: #d29922; }
+  .log-entry.level-info { border-left-color: #58a6ff; }
+  .log-entry.level-debug { border-left-color: #8b949e; }
+  .log-entry.level-fatal { border-left-color: #ff7b72; }
+  .log-entry .row { display: grid; grid-template-columns: 50px 120px 1fr 90px 40px 28px; gap: 0 8px; align-items: baseline; padding: 4px 12px; }
+  .log-entry .level { font-size: 11px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; display: inline-block; }
+  .log-entry .logger { color: #7ee787; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-entry .message { color: #c9d1d9; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-entry .time { color: #8b949e; font-size: 12px; white-space: nowrap; text-align: right; }
+  .log-entry .seq { color: #6e7681; font-size: 12px; white-space: nowrap; text-align: right; }
+  .log-entry .inspect-btn { width: 22px; height: 18px; background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 3px; cursor: pointer; font-size: 10px; line-height: 16px; text-align: center; padding: 0; }
+  .log-entry .inspect-btn:hover { background: #30363d; color: #c9d1d9; border-color: #58a6ff; }
+  .log-entry .detail { display: none; margin: 0 12px 6px; padding: 6px 8px; border-top: 1px solid #30363d; white-space: pre-wrap; font-size: 12px; color: #8b949e; background: #0d1117; border-radius: 0 0 4px 4px; }
+  .log-entry .detail .json-key { color: #79c0ff; }
+  .log-entry .detail .json-string { color: #a5d6ff; }
+  .log-entry .detail .json-number { color: #d2a8ff; }
+  .log-entry .detail .json-bool { color: #ff7b72; }
+  .log-entry .detail .json-null { color: #8b949e; }
+  .log-entry .detail .detail-caller { color: #6e7681; font-style: italic; margin-bottom: 4px; }
+  .log-entry .detail .detail-message { color: #c9d1d9; margin-bottom: 6px; word-wrap: break-word; }
+  .log-entry.expanded .detail { display: block; }
+  .log-entry.expanded .message { white-space: normal; word-wrap: break-word; }
+  .log-stats-bar { display: flex; gap: 16px; padding: 8px 20px; background: #0d1117; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e; align-items: center; }
+  /* --- Export dropdown --- */
+  .export-wrap { position: relative; }
+  .export-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 10px 12px; z-index: 10; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+  .export-menu.open { display: block; }
+  .export-menu label { display: block; font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 8px; }
+  .export-menu label:first-child { margin-top: 0; }
+  .export-menu select { width: 100%; background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 4px 6px; border-radius: 4px; font-size: 13px; }
+  .export-menu .export-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .export-menu .export-actions button { flex: 1; background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .export-menu .export-actions button:hover { background: #30363d; }
+  .export-menu .export-actions button.primary { background: #238636; border-color: #238636; color: #fff; }
+  .export-menu .export-actions button.primary:hover { background: #2ea043; }
+  .export-copied { font-size: 11px; color: #7ee787; text-align: center; margin-top: 6px; display: none; }
   .empty { text-align: center; padding: 60px 20px; color: #8b949e; }
   .empty code { background: #161b22; padding: 2px 6px; border-radius: 4px; }
 </style>
@@ -119,6 +164,7 @@
   <h1>eventrelay</h1>
   <span class="badge badge-green" id="count">0</span>
   <div class="nav-tab active" data-view="events">Events</div>
+  <div class="nav-tab" data-view="logs">Logs</div>
   <div class="nav-tab" data-view="status">Status</div>
   <!-- additional page tabs inserted here by JS -->
 </div>
@@ -134,6 +180,20 @@
     <div class="controls">
       <button id="btn-pause">Pause</button>
       <button id="btn-clear">Clear</button>
+      <div class="export-wrap">
+        <button id="btn-export">Export</button>
+        <div class="export-menu" id="export-menu">
+          <label>Format</label>
+          <select id="exp-format"><option value="json">JSON</option><option value="jsonl">JSONL</option><option value="csv">CSV</option></select>
+          <label>Count</label>
+          <select id="exp-count"><option value="50">Last 50</option><option value="100">Last 100</option><option value="500">Last 500</option><option value="1000">All in buffer</option></select>
+          <div class="export-actions">
+            <button onclick="doExport('events','copy')">Copy</button>
+            <button class="primary" onclick="doExport('events','download')">Download</button>
+          </div>
+          <div class="export-copied" id="exp-copied">Copied!</div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="stats-bar" id="stats-bar">
@@ -157,7 +217,50 @@
     </div>
   </div>
 </div>
+<div id="logs-view">
+  <div class="events-toolbar">
+    <div class="filters">
+      <input id="lf-level" placeholder="level" list="dl-log-level" type="text">
+      <input id="lf-logger" placeholder="logger" list="dl-log-logger" type="text">
+      <input id="lf-search" placeholder="search message..." type="text" style="width:200px">
+    </div>
+    <div class="controls">
+      <button id="log-btn-pause">Pause</button>
+      <button id="log-btn-clear">Clear</button>
+      <div class="export-wrap">
+        <button id="log-btn-export">Export</button>
+        <div class="export-menu" id="log-export-menu">
+          <label>Format</label>
+          <select id="log-exp-format"><option value="json">JSON</option><option value="jsonl">JSONL</option><option value="csv">CSV</option></select>
+          <label>Count</label>
+          <select id="log-exp-count"><option value="50">Last 50</option><option value="100">Last 100</option><option value="500">Last 500</option><option value="1000">All in buffer</option></select>
+          <div class="export-actions">
+            <button onclick="doExport('logs','copy')">Copy</button>
+            <button class="primary" onclick="doExport('logs','download')">Download</button>
+          </div>
+          <div class="export-copied" id="log-exp-copied">Copied!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="log-stats-bar" id="log-stats-bar">
+    <div class="sparkline-wrap"><span class="stat-label">rate:</span> <span class="stat-value" id="ls-rate">0/s</span> <svg id="log-sparkline" width="120" height="20"></svg></div>
+    <div class="stat"><span class="stat-label">accepted:</span> <span class="stat-value" id="ls-accepted">0</span></div>
+    <div class="stat"><span class="stat-label">gated:</span> <span class="stat-value" id="ls-gated">0</span></div>
+    <div class="stat"><span class="stat-label">min_level:</span> <span class="stat-value" id="ls-min-level">debug</span></div>
+    <div class="stat" id="ls-errors-wrap" style="display:none"><span class="badge badge-red" id="ls-errors">0 errors</span></div>
+  </div>
+  <div id="log-feed">
+    <div class="log-col-header">
+      <span>Level</span><span>Logger</span><span>Message</span><span>Time</span><span>#</span><span></span>
+    </div>
+    <div class="empty" id="log-empty-msg">
+      Waiting for logs...<br><br>
+      POST JSON to <code>/log</code>
+    </div>
+  </div>
+</div>
 <div id="page-view"></div>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

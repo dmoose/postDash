@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	erclient "github.com/dmoose/eventrelay/client"
 )
 
 // version is set at build time via ldflags.
@@ -124,6 +127,19 @@ func main() {
 
 	hub := NewHub(*bufSize)
 
+	// Log hub — separate buffer for structured logs
+	logBufSize := 500
+	logMinLevel := "debug"
+	if cfg != nil && cfg.Server != nil {
+		if cfg.Server.LogBuffer != 0 {
+			logBufSize = cfg.Server.LogBuffer
+		}
+		if cfg.Server.LogMinLevel != "" {
+			logMinLevel = cfg.Server.LogMinLevel
+		}
+	}
+	logHub := NewLogHub(logBufSize, logMinLevel)
+
 	var notifier *Notifier
 	if cfg != nil && len(cfg.Notify) > 0 {
 		var err error
@@ -131,7 +147,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("setting up notifications: %v", err)
 		}
-		log.Printf("Notifications enabled: %d rules", len(cfg.Notify))
 		defer notifier.Close()
 	}
 
@@ -143,7 +158,6 @@ func main() {
 		}
 		defer f.Close() //nolint:errcheck // best-effort log file close at shutdown
 		logWriter = f
-		log.Printf("Logging events to %s", *logFile)
 	}
 
 	mux := http.NewServeMux()
@@ -153,7 +167,6 @@ func main() {
 	if *token != "" {
 		postHandler = requireToken(*token, postHandler)
 		batchHandler = requireToken(*token, batchHandler)
-		log.Printf("Token auth enabled for POST /events")
 	}
 	mux.HandleFunc("/events", postHandler)
 	mux.HandleFunc("/events/batch", batchHandler)
@@ -162,6 +175,15 @@ func main() {
 	mux.HandleFunc("/events/stats", statsHandler(hub))
 	mux.HandleFunc("/events/rate", rateHistoryHandler(hub))
 	mux.HandleFunc("/events/channels", channelsHandler(hub))
+	logPostHandler := postLogHandler(logHub)
+	if *token != "" {
+		logPostHandler = requireToken(*token, logPostHandler)
+	}
+	mux.HandleFunc("/log", logPostHandler)
+	mux.HandleFunc("/logs/stream", logSSEHandler(logHub))
+	mux.HandleFunc("/logs/recent", logRecentHandler(logHub))
+	mux.HandleFunc("/logs/stats", logStatsHandler(logHub))
+	mux.HandleFunc("/logs/rate", logRateHistoryHandler(logHub))
 	mux.HandleFunc("/healthz", healthHandler())
 
 	// Pages system
@@ -173,7 +195,6 @@ func main() {
 			scriptsDir = cfg.Server.ScriptsDir
 		}
 		pageRunner = NewPageRunner(cfg.Pages, scriptsDir)
-		log.Printf("Pages enabled: %d registered", len(cfg.Pages))
 	}
 	if pageRunner != nil {
 		mux.HandleFunc("/api/pages", pagesListHandler(pageRunner))
@@ -185,7 +206,7 @@ func main() {
 			_, _ = w.Write([]byte("[]"))
 		})
 	}
-	mux.HandleFunc("/api/status", statusPageHandler(hub, notifier, cfg, startTime))
+	mux.HandleFunc("/api/status", statusPageHandler(hub, logHub, notifier, cfg, startTime))
 
 	staticSub, _ := fs.Sub(staticFS, "static")
 	staticHandler := http.FileServer(http.FS(staticSub))
@@ -203,18 +224,99 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Self-logging: once the server is up, set up slog to tee to stderr + our own /log endpoint
+	selfLog := true
+	if cfg != nil && cfg.Server != nil && cfg.Server.SelfLog != nil {
+		selfLog = *cfg.Server.SelfLog
+	}
+
 	go func() {
 		<-ctx.Done()
-		log.Println("shutting down...")
+		slog.Info("shutting down")
 		if err := server.Shutdown(context.Background()); err != nil {
-			log.Printf("shutdown error: %v", err)
+			slog.Error("shutdown error", "error", err)
 		}
 	}()
 
-	log.Printf("eventrelay %s listening on http://%s (pid %d)", version, addr, os.Getpid())
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+	// Start listening in a goroutine so we can set up self-logging after
+	listenErr := make(chan error, 1)
+	go func() {
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			listenErr <- err
+		}
+		close(listenErr)
+	}()
+
+	// Brief pause to let the listener start, then set up self-logging
+	time.Sleep(50 * time.Millisecond)
+	select {
+	case err := <-listenErr:
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	default:
+	}
+
+	if selfLog {
+		selfURL := fmt.Sprintf("http://127.0.0.1:%d/events", *port)
+		erClient := erclient.New(selfURL, "eventrelay")
+		logHandler := erclient.NewSlogLogHandler(erClient, &erclient.SlogLogOptions{
+			Logger:    "eventrelay",
+			AddSource: true,
+		})
+		// Tee: write to both stderr (text) and eventrelay /log endpoint
+		stderrHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+		slog.SetDefault(slog.New(teeHandler{stderrHandler, logHandler}))
+		defer erClient.Flush()
+	}
+
+	slog.Info("server started",
+		"version", version,
+		"addr", addr,
+		"pid", os.Getpid(),
+		"buffer", *bufSize,
+		"log_buffer", logBufSize,
+		"log_min_level", logMinLevel,
+		"self_log", selfLog,
+	)
+
+	if cfg != nil && cfg.Server != nil {
+		if len(cfg.Notify) > 0 {
+			slog.Info("notifications enabled", "rules", len(cfg.Notify))
+		}
+		if *logFile != "" {
+			slog.Info("event log file", "path", *logFile)
+		}
+	}
+
+	// Block until server exits
+	if err := <-listenErr; err != nil {
 		log.Fatal(err)
 	}
+}
+
+// teeHandler fans out slog records to multiple handlers.
+type teeHandler struct {
+	a, b slog.Handler
+}
+
+func (t teeHandler) Enabled(ctx context.Context, l slog.Level) bool {
+	return t.a.Enabled(ctx, l) || t.b.Enabled(ctx, l)
+}
+
+func (t teeHandler) Handle(ctx context.Context, r slog.Record) error {
+	_ = t.a.Handle(ctx, r)
+	_ = t.b.Handle(ctx, r)
+	return nil
+}
+
+func (t teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return teeHandler{t.a.WithAttrs(attrs), t.b.WithAttrs(attrs)}
+}
+
+func (t teeHandler) WithGroup(name string) slog.Handler {
+	return teeHandler{t.a.WithGroup(name), t.b.WithGroup(name)}
 }
 
 func runStatus(port int) {

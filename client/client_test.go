@@ -140,3 +140,115 @@ func TestSlogHandler(t *testing.T) {
 		t.Errorf("expected level error, got %v", errorEvt["level"])
 	}
 }
+
+func TestClientLog(t *testing.T) {
+	var mu sync.Mutex
+	var received []map[string]any
+	var lastPath string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var entry map[string]any
+		_ = json.Unmarshal(body, &entry)
+		mu.Lock()
+		received = append(received, entry)
+		lastPath = r.URL.Path
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	c := New(server.URL+"/events", "myapp")
+	c.LogInfo("request handled", map[string]any{"path": "/api"})
+	c.Flush()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(received) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(received))
+	}
+	if lastPath != "/log" {
+		t.Errorf("expected path /log, got %s", lastPath)
+	}
+	if received[0]["message"] != "request handled" {
+		t.Errorf("expected message 'request handled', got %v", received[0]["message"])
+	}
+	if received[0]["logger"] != "myapp" {
+		t.Errorf("expected logger myapp, got %v", received[0]["logger"])
+	}
+	if received[0]["level"] != "info" {
+		t.Errorf("expected level info, got %v", received[0]["level"])
+	}
+	fields := received[0]["fields"].(map[string]any)
+	if fields["path"] != "/api" {
+		t.Errorf("expected field path=/api, got %v", fields["path"])
+	}
+}
+
+func TestSlogLogHandler(t *testing.T) {
+	var mu sync.Mutex
+	var received []map[string]any
+	var paths []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var entry map[string]any
+		_ = json.Unmarshal(body, &entry)
+		mu.Lock()
+		received = append(received, entry)
+		paths = append(paths, r.URL.Path)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	c := New(server.URL+"/events", "myapp")
+	handler := NewSlogLogHandler(c, nil)
+	logger := slog.New(handler)
+
+	logger.Info("server started", "port", 6060)
+	logger.Error("connection failed", "host", "db.local")
+	c.Flush()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(received) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(received))
+	}
+
+	// All should go to /log
+	for _, p := range paths {
+		if p != "/log" {
+			t.Errorf("expected path /log, got %s", p)
+		}
+	}
+
+	// Find by message
+	byMsg := make(map[string]map[string]any)
+	for _, e := range received {
+		byMsg[e["message"].(string)] = e
+	}
+
+	info := byMsg["server started"]
+	if info == nil {
+		t.Fatal("missing 'server started' entry")
+	}
+	if info["level"] != "info" {
+		t.Errorf("expected level info, got %v", info["level"])
+	}
+	if info["logger"] != "myapp" {
+		t.Errorf("expected logger myapp, got %v", info["logger"])
+	}
+	fields := info["fields"].(map[string]any)
+	if fields["port"] != float64(6060) {
+		t.Errorf("expected port 6060, got %v", fields["port"])
+	}
+
+	errEntry := byMsg["connection failed"]
+	if errEntry == nil {
+		t.Fatal("missing 'connection failed' entry")
+	}
+	if errEntry["level"] != "error" {
+		t.Errorf("expected level error, got %v", errEntry["level"])
+	}
+}

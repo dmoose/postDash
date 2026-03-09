@@ -113,7 +113,7 @@ func TestSubscribeReceivesEvents(t *testing.T) {
 	_, _ = hub.Publish(json.RawMessage(`{"source":"target","action":"catch"}`))
 
 	select {
-	case evt := <-client.ch:
+	case evt := <-client.Ch:
 		if evt.Action != "catch" {
 			t.Errorf("expected action catch, got %s", evt.Action)
 		}
@@ -123,7 +123,7 @@ func TestSubscribeReceivesEvents(t *testing.T) {
 
 	// Should not have received the "other" event
 	select {
-	case evt := <-client.ch:
+	case evt := <-client.Ch:
 		t.Errorf("unexpected event: %+v", evt)
 	default:
 	}

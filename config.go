@@ -17,12 +17,15 @@ type Config struct {
 // ServerConf holds server settings that can be set in the YAML config file.
 // Flags take precedence over these values.
 type ServerConf struct {
-	Port       int    `yaml:"port,omitempty"`        // listen port
-	Bind       string `yaml:"bind,omitempty"`        // bind address
-	Token      string `yaml:"token,omitempty"`       // Bearer token for POST auth
-	Buffer     int    `yaml:"buffer,omitempty"`      // ring buffer size
-	Log        string `yaml:"log,omitempty"`         // JSONL log file path
-	ScriptsDir string `yaml:"scripts_dir,omitempty"` // directory for page scripts
+	Port        int    `yaml:"port,omitempty"`          // listen port
+	Bind        string `yaml:"bind,omitempty"`          // bind address
+	Token       string `yaml:"token,omitempty"`         // Bearer token for POST auth
+	Buffer      int    `yaml:"buffer,omitempty"`        // ring buffer size
+	LogBuffer   int    `yaml:"log_buffer,omitempty"`    // ring buffer size for logs (default: 500)
+	LogMinLevel string `yaml:"log_min_level,omitempty"` // minimum log level to accept: debug|info|warn|error (default: debug)
+	SelfLog     *bool  `yaml:"self_log,omitempty"`      // log eventrelay internals to its own /log endpoint (default: true)
+	Log         string `yaml:"log,omitempty"`           // JSONL log file path
+	ScriptsDir  string `yaml:"scripts_dir,omitempty"`   // directory for page scripts
 }
 
 // NotifyRule defines when and where to send notifications.

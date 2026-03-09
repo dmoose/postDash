@@ -111,25 +111,7 @@ func sseStreamHandler(hub *Hub) http.HandlerFunc {
 		client := hub.Subscribe(filter)
 		defer hub.Unsubscribe(client)
 
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-		flusher.Flush()
-
-		ctx := r.Context()
-		for {
-			select {
-			case evt, ok := <-client.ch:
-				if !ok {
-					return
-				}
-				data, _ := json.Marshal(evt)
-				_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
-				flusher.Flush()
-			case <-ctx.Done():
-				return
-			}
-		}
+		sseLoop(w, r, client.Ch, flusher)
 	}
 }
 
@@ -198,6 +180,117 @@ func filterFromQuery(r *http.Request) Filter {
 		Action:  r.URL.Query().Get("action"),
 		Level:   r.URL.Query().Get("level"),
 		AgentID: r.URL.Query().Get("agent_id"),
+	}
+}
+
+// --- Log handlers ---
+
+func postLogHandler(logHub *LogHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err != nil {
+			http.Error(w, "read error", http.StatusBadRequest)
+			return
+		}
+
+		entry, accepted, err := logHub.Publish(json.RawMessage(body))
+		if err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"accepted": accepted,
+			"seq":      entry.Seq,
+		})
+	}
+}
+
+func logSSEHandler(logHub *LogHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		level := r.URL.Query().Get("level")
+		sub := logHub.Subscribe(level)
+		defer logHub.Unsubscribe(sub)
+
+		sseLoop(w, r, sub.Ch, flusher)
+	}
+}
+
+func logRecentHandler(logHub *LogHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		n := 100
+		if s := r.URL.Query().Get("n"); s != "" {
+			if v, err := strconv.Atoi(s); err == nil && v > 0 {
+				n = v
+			}
+		}
+
+		level := r.URL.Query().Get("level")
+		entries := logHub.Recent(n, level)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(entries)
+	}
+}
+
+func logRateHistoryHandler(logHub *LogHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		buckets := 60
+		if s := r.URL.Query().Get("buckets"); s != "" {
+			if v, err := strconv.Atoi(s); err == nil && v > 0 && v <= 300 {
+				buckets = v
+			}
+		}
+		minutes := 5
+		if s := r.URL.Query().Get("minutes"); s != "" {
+			if v, err := strconv.Atoi(s); err == nil && v > 0 {
+				minutes = v
+			}
+		}
+		counts := logHub.RateHistory(time.Duration(minutes)*time.Minute, buckets)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(counts)
+	}
+}
+
+func logStatsHandler(logHub *LogHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(logHub.Stats())
+	}
+}
+
+// sseLoop writes items from a channel as SSE events until the client disconnects.
+func sseLoop[T any](w http.ResponseWriter, r *http.Request, ch <-chan T, flusher http.Flusher) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	flusher.Flush()
+
+	ctx := r.Context()
+	for {
+		select {
+		case item, ok := <-ch:
+			if !ok {
+				return
+			}
+			data, _ := json.Marshal(item)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

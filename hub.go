@@ -32,11 +32,9 @@ type HubStats struct {
 
 // Hub manages the event ring buffer and client fan-out.
 type Hub struct {
-	mu      sync.RWMutex
-	seq     uint64
-	ring    []Event
-	maxSize int
-	clients map[*Client]bool
+	rb  *RingBroadcaster[Event]
+	mu  sync.RWMutex
+	seq uint64
 
 	// Stats counters
 	bySource  map[string]uint64
@@ -45,10 +43,7 @@ type Hub struct {
 }
 
 // Client is a connected SSE subscriber.
-type Client struct {
-	ch     chan Event
-	filter Filter
-}
+type Client = Subscriber[Event]
 
 // Filter controls which events a client receives.
 type Filter struct {
@@ -63,12 +58,14 @@ func (f Filter) matches(e Event) bool {
 	return matchesEvent(f.Source, f.Channel, f.Action, f.Level, f.AgentID, e)
 }
 
+func (f Filter) matchFunc() func(Event) bool {
+	return f.matches
+}
+
 // NewHub creates a Hub with the given ring buffer size.
 func NewHub(maxSize int) *Hub {
 	return &Hub{
-		ring:      make([]Event, 0, maxSize),
-		maxSize:   maxSize,
-		clients:   make(map[*Client]bool),
+		rb:        NewRingBroadcaster[Event](maxSize),
 		bySource:  make(map[string]uint64),
 		byLevel:   make(map[string]uint64),
 		byChannel: make(map[string]uint64),
@@ -92,11 +89,6 @@ func (h *Hub) Publish(raw json.RawMessage) (*Event, error) {
 		evt.Level = "info"
 	}
 
-	if len(h.ring) >= h.maxSize {
-		h.ring = h.ring[1:]
-	}
-	h.ring = append(h.ring, evt)
-
 	// Update counters
 	if evt.Source != "" {
 		h.bySource[evt.Source]++
@@ -105,21 +97,9 @@ func (h *Hub) Publish(raw json.RawMessage) (*Event, error) {
 	if evt.Channel != "" {
 		h.byChannel[evt.Channel]++
 	}
-
-	clients := make([]*Client, 0, len(h.clients))
-	for c := range h.clients {
-		clients = append(clients, c)
-	}
 	h.mu.Unlock()
 
-	for _, c := range clients {
-		if c.filter.matches(evt) {
-			select {
-			case c.ch <- evt:
-			default:
-			}
-		}
-	}
+	h.rb.Append(evt)
 
 	return &evt, nil
 }
@@ -127,51 +107,48 @@ func (h *Hub) Publish(raw json.RawMessage) (*Event, error) {
 // Stats returns current aggregate counters.
 func (h *Hub) Stats() HubStats {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	stats := HubStats{
 		TotalEvents: h.seq,
-		ClientCount: len(h.clients),
+		ClientCount: h.rb.ClientCount(),
 		BySource:    copyMap(h.bySource),
 		ByLevel:     copyMap(h.byLevel),
 		ByChannel:   copyMap(h.byChannel),
 	}
+	h.mu.RUnlock()
 
 	// Calculate rate from ring buffer (events in last 10s)
 	cutoff := time.Now().Add(-10 * time.Second)
 	var recent int
-	for i := len(h.ring) - 1; i >= 0; i-- {
-		if h.ring[i].TS.Before(cutoff) {
-			break
+	h.rb.Walk(func(e Event) bool {
+		if e.TS.Before(cutoff) {
+			return false
 		}
 		recent++
-	}
+		return true
+	})
 	stats.RecentRate = float64(recent) / 10.0
 
 	return stats
 }
 
 // RateHistory returns event counts per bucket over the last duration.
-// Returns buckets number of samples, each covering duration/buckets time.
 func (h *Hub) RateHistory(duration time.Duration, buckets int) []int {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	now := time.Now()
 	bucketSize := duration / time.Duration(buckets)
 	counts := make([]int, buckets)
 
-	for i := len(h.ring) - 1; i >= 0; i-- {
-		age := now.Sub(h.ring[i].TS)
+	h.rb.Walk(func(e Event) bool {
+		age := now.Sub(e.TS)
 		if age > duration {
-			break
+			return false
 		}
 		idx := max(buckets-1-int(age/bucketSize), 0)
 		if idx >= buckets {
 			idx = buckets - 1
 		}
 		counts[idx]++
-	}
+		return true
+	})
 	return counts
 }
 
@@ -188,9 +165,7 @@ func (h *Hub) Channels() []string {
 
 // BufferUsage returns current ring occupancy and configured max size.
 func (h *Hub) BufferUsage() (used int, capacity int) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return len(h.ring), h.maxSize
+	return h.rb.Len(), h.rb.Cap()
 }
 
 func copyMap(m map[string]uint64) map[string]uint64 {
@@ -201,38 +176,15 @@ func copyMap(m map[string]uint64) map[string]uint64 {
 
 // Subscribe creates a new client with the given filter.
 func (h *Hub) Subscribe(f Filter) *Client {
-	c := &Client{
-		ch:     make(chan Event, 64),
-		filter: f,
-	}
-	h.mu.Lock()
-	h.clients[c] = true
-	h.mu.Unlock()
-	return c
+	return h.rb.Subscribe(f.matchFunc())
 }
 
 // Unsubscribe removes a client.
 func (h *Hub) Unsubscribe(c *Client) {
-	h.mu.Lock()
-	delete(h.clients, c)
-	h.mu.Unlock()
-	close(c.ch)
+	h.rb.Unsubscribe(c)
 }
 
 // Recent returns the last n events from the ring buffer, filtered.
 func (h *Hub) Recent(n int, f Filter) []Event {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	var result []Event
-	for i := len(h.ring) - 1; i >= 0 && len(result) < n; i-- {
-		if f.matches(h.ring[i]) {
-			result = append(result, h.ring[i])
-		}
-	}
-
-	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
-		result[i], result[j] = result[j], result[i]
-	}
-	return result
+	return h.rb.Recent(n, f.matchFunc())
 }

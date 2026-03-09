@@ -180,7 +180,7 @@ type statusSection struct {
 }
 
 // statusPageHandler returns the built-in eventrelay status page.
-func statusPageHandler(hub *Hub, notifier *Notifier, cfg *Config, startTime time.Time) http.HandlerFunc {
+func statusPageHandler(hub *Hub, logHub *LogHub, notifier *Notifier, cfg *Config, startTime time.Time) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		stats := hub.Stats()
 		hostname, _ := os.Hostname()
@@ -220,7 +220,27 @@ func statusPageHandler(hub *Hub, notifier *Notifier, cfg *Config, startTime time
 			}
 		}
 
-		sections := []statusSection{server, events}
+		// Logs section
+		logStats := logHub.Stats()
+		logUsed, logCap := logHub.BufferUsage()
+		logs := statusSection{
+			Title: "Logs",
+			Items: [][]string{
+				{"Accepted", fmt.Sprintf("%d", logStats.Accepted)},
+				{"Gated", fmt.Sprintf("%d (below %s)", logStats.Gated, logStats.MinLevel)},
+				{"Rate", fmt.Sprintf("%.1f/s", logStats.RecentRate)},
+				{"Buffer", fmt.Sprintf("%d / %d", logUsed, logCap)},
+				{"SSE Clients", fmt.Sprintf("%d", logStats.ClientCount)},
+			},
+		}
+		for lvl, cnt := range logStats.ByLevel {
+			logs.Items = append(logs.Items, []string{"Level: " + lvl, fmt.Sprintf("%d", cnt)})
+		}
+		for logger, cnt := range logStats.ByLogger {
+			logs.Items = append(logs.Items, []string{"Logger: " + logger, fmt.Sprintf("%d", cnt)})
+		}
+
+		sections := []statusSection{server, events, logs}
 
 		if cfg != nil {
 			config := statusSection{Title: "Configuration"}

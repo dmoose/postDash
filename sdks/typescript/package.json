@@ -1,7 +1,7 @@
 {
-  "name": "eventrelay",
+  "name": "postDash",
   "version": "0.1.0",
-  "description": "TypeScript SDK for eventrelay — real-time event streaming",
+  "description": "TypeScript SDK for postDash — real-time event streaming",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],

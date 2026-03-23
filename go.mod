@@ -1,4 +1,4 @@
-module github.com/dmoose/eventrelay
+module github.com/dmoose/postDash
 
 go 1.26.0
 

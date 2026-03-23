@@ -1,10 +1,10 @@
 # Architecture
 
-eventrelay is a lightweight event streaming service built around three core concepts: a ring buffer for in-memory event storage, Server-Sent Events (SSE) for real-time fan-out, and match rules for notification routing.
+postDash is a lightweight event streaming service built around three core concepts: a ring buffer for in-memory event storage, Server-Sent Events (SSE) for real-time fan-out, and match rules for notification routing.
 
 ## Design Goals
 
-1. **Zero-config useful** — `go build && ./eventrelay` gives you a working dashboard with no setup
+1. **Zero-config useful** — `go build && ./postDash` gives you a working dashboard with no setup
 2. **Language-agnostic ingestion** — anything that can POST JSON can send events
 3. **Fire-and-forget SDKs** — clients never block the caller's critical path
 4. **Single binary** — no external dependencies (database, message broker, etc.) required
@@ -68,7 +68,7 @@ All three SDKs (Go, Python, TypeScript) follow the same pattern:
 - **`Timed()` helper**: Captures start time and emits an event with `duration_ms` on completion.
 - **`Flush()`**: Waits for all pending sends — used before process exit.
 
-The Go SDK additionally provides a `slog.Handler` implementation for routing structured log output to eventrelay.
+The Go SDK additionally provides a `slog.Handler` implementation for routing structured log output to postDash.
 
 ## Web Dashboard
 
@@ -76,11 +76,11 @@ The web UI (`static/index.html` + `static/app.js`) is embedded in the binary via
 
 ## TUI Dashboard
 
-The TUI (`tui.go`) uses the Charmbracelet BubbleTea framework. It connects to a running eventrelay server as an SSE client, providing terminal-based monitoring with filtering, pause, and color-coded output. The TUI is a client, not a server — it connects to the same HTTP endpoints as the web dashboard.
+The TUI (`tui.go`) uses the Charmbracelet BubbleTea framework. It connects to a running postDash server as an SSE client, providing terminal-based monitoring with filtering, pause, and color-coded output. The TUI is a client, not a server — it connects to the same HTTP endpoints as the web dashboard.
 
 ## Pages System
 
-The pages system (`pages.go`) extends eventrelay from a push-only event viewer to a pull-capable system portal. Config-registered shell commands are executed on demand and their output is rendered in the dashboard.
+The pages system (`pages.go`) extends postDash from a push-only event viewer to a pull-capable system portal. Config-registered shell commands are executed on demand and their output is rendered in the dashboard.
 
 Key design decisions:
 - **Config file is the trust boundary** — commands are registered in YAML, not via API. No runtime command injection is possible.

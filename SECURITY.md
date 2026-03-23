@@ -2,7 +2,7 @@
 
 ## Threat Model
 
-eventrelay is designed to run as a local system service or on a trusted intranet. It is **not designed for exposure to the public internet**. The threat model assumes:
+postDash is designed to run as a local system service or on a trusted intranet. It is **not designed for exposure to the public internet**. The threat model assumes:
 
 - The operator controls the machine and config file
 - Network access is limited to localhost or a trusted LAN
@@ -10,15 +10,15 @@ eventrelay is designed to run as a local system service or on a trusted intranet
 
 ## On-Device (localhost only, default)
 
-**Default bind: `127.0.0.1`** — eventrelay only accepts connections from the local machine.
+**Default bind: `127.0.0.1`** — postDash only accepts connections from the local machine.
 
 | Surface | Risk | Mitigation |
 |---------|------|------------|
 | POST /events | Any local process can submit events | Low risk — this is the intended use case. Add `--token` if you want to restrict which local tools can post. |
 | Dashboard / Pages | Any local user can view the web UI | Low risk on a personal machine. Events and page output may contain sensitive data — be aware of what your scripts expose. |
-| Page commands | Commands run as the eventrelay user | Commands are defined **only in the config file**, not via the API. An attacker would need write access to the config file, at which point they already have shell access. |
-| Log file | JSONL log written with `0600` permissions | Only readable by the eventrelay user. Events may contain sensitive data in the `data` field. |
-| PID file | Written to `~/.config/eventrelay/` | Standard permissions. |
+| Page commands | Commands run as the postDash user | Commands are defined **only in the config file**, not via the API. An attacker would need write access to the config file, at which point they already have shell access. |
+| Log file | JSONL log written with `0600` permissions | Only readable by the postDash user. Events may contain sensitive data in the `data` field. |
+| PID file | Written to `~/.config/postDash/` | Standard permissions. |
 
 ## On Network (intranet deployment)
 
@@ -37,19 +37,19 @@ When binding to `0.0.0.0` or deploying behind a reverse proxy:
 Internet ←✗— (do not expose)
 
 LAN / VPN:
-  Client → Caddy (TLS + basic auth) → eventrelay (localhost:6060)
+  Client → Caddy (TLS + basic auth) → postDash (localhost:6060)
 ```
 
-1. eventrelay binds to localhost (`127.0.0.1`)
+1. postDash binds to localhost (`127.0.0.1`)
 2. Caddy reverse proxies with TLS and optional basic auth
-3. SDKs post directly to eventrelay using the Bearer token
+3. SDKs post directly to postDash using the Bearer token
 4. Dashboard users authenticate through Caddy
 
 See `deploy/docker-compose.yml` and `deploy/Caddyfile` for a ready-to-use setup.
 
 ## Page Command Security
 
-The pages system executes shell commands defined in the YAML config file. This is intentionally powerful — it's what makes eventrelay a useful portal. The security boundaries are:
+The pages system executes shell commands defined in the YAML config file. This is intentionally powerful — it's what makes postDash a useful portal. The security boundaries are:
 
 1. **Config file is the trust boundary** — commands can only be registered by editing the config file. There is no API for registering commands at runtime.
 2. **Output is sanitized** — all command output is HTML-escaped before rendering. The markdown renderer uses a whitelist approach: raw text is escaped first, then only safe structural elements (headings, bold, code, lists, tables) are re-introduced via pattern matching. Raw HTML in command output is displayed as text, not executed.
@@ -60,7 +60,7 @@ The pages system executes shell commands defined in the YAML config file. This i
 
 - Do not register commands that output secrets, tokens, or credentials
 - Do not register commands that accept user input (page commands are non-interactive)
-- Do not expose eventrelay to the public internet, even behind a proxy
+- Do not expose postDash to the public internet, even behind a proxy
 - Do not put the config file in a world-writable location
 
 ## XSS Prevention

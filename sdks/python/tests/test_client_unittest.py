@@ -1,11 +1,11 @@
-"""unittest-based tests for the eventrelay Python SDK."""
+"""unittest-based tests for the postDash Python SDK."""
 
 import json
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from eventrelay import Client
+from postDash import Client
 
 
 class Handler(BaseHTTPRequestHandler):

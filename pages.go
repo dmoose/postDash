@@ -179,7 +179,7 @@ type statusSection struct {
 	Items [][]string `json:"items"` // each item is [key, value]
 }
 
-// statusPageHandler returns the built-in eventrelay status page.
+// statusPageHandler returns the built-in postDash status page.
 func statusPageHandler(hub *Hub, logHub *LogHub, notifier *Notifier, cfg *Config, startTime time.Time) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		stats := hub.Stats()

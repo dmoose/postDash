@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.eventrelay</string>
+    <string>com.postDash</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/eventrelay</string>
+        <string>/usr/local/bin/postDash</string>
         <string>--port</string>
         <string>6060</string>
     </array>
@@ -15,8 +15,8 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardErrorPath</key>
-    <string>/tmp/eventrelay.log</string>
+    <string>/tmp/postDash.log</string>
     <key>StandardOutPath</key>
-    <string>/tmp/eventrelay.log</string>
+    <string>/tmp/postDash.log</string>
 </dict>
 </plist>

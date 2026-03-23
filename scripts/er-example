@@ -1,5 +1,5 @@
 #!/bin/sh
-# er-example — demonstrates markdown rendering in eventrelay pages
+# er-example — demonstrates markdown rendering in postDash pages
 # Format: markdown
 #
 # This script shows what's possible with the markdown format.
@@ -8,7 +8,7 @@
 cat << 'MARKDOWN'
 # Dashboard Example
 
-This page demonstrates the markdown rendering capabilities available to eventrelay page scripts.
+This page demonstrates the markdown rendering capabilities available to postDash page scripts.
 
 ## Text Formatting
 
@@ -32,14 +32,14 @@ Ordered:
 
 | Service | Port | Status |
 |---------|------|--------|
-| eventrelay | 6060 | running |
+| postDash | 6060 | running |
 | postgres | 5432 | running |
 | redis | 6379 | stopped |
 
 ## Code Blocks
 
 ```
-$ eventrelay send -s demo -a hello -d '{"msg":"world"}'
+$ postDash send -s demo -a hello -d '{"msg":"world"}'
 sent (seq 42)
 ```
 

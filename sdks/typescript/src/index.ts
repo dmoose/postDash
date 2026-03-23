@@ -1,9 +1,9 @@
 /**
- * eventrelay - TypeScript SDK for sending events to an eventrelay server.
+ * postDash - TypeScript SDK for sending events to an postDash server.
  *
  * @example
  * ```ts
- * import { Client } from "eventrelay";
+ * import { Client } from "postDash";
  *
  * const er = new Client("http://localhost:6060/events", "myapp");
  * er.emit("deploy", { env: "prod" });

@@ -18,7 +18,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	erclient "github.com/dmoose/eventrelay/client"
+	erclient "github.com/dmoose/postDash/client"
 )
 
 // version is set at build time via ldflags.
@@ -38,7 +38,7 @@ func main() {
 			runSend(os.Args[2:])
 			return
 		case "version":
-			fmt.Println("eventrelay " + version)
+			fmt.Println("postDash " + version)
 			return
 		}
 	}
@@ -49,14 +49,14 @@ func main() {
 	logFile := flag.String("log", "", "optional JSONL log file path")
 	bufSize := flag.Int("buffer", 1000, "ring buffer size")
 	configFile := flag.String("config", defaultConfigPath(), "config file path")
-	tuiMode := flag.Bool("tui", false, "connect to a running eventrelay as a TUI dashboard")
-	tuiURL := flag.String("url", "", "eventrelay server URL for TUI mode")
-	statusMode := flag.Bool("status", false, "check if eventrelay is running")
+	tuiMode := flag.Bool("tui", false, "connect to a running postDash as a TUI dashboard")
+	tuiURL := flag.String("url", "", "postDash server URL for TUI mode")
+	statusMode := flag.Bool("status", false, "check if postDash is running")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("eventrelay " + version)
+		fmt.Println("postDash " + version)
 		return
 	}
 
@@ -82,7 +82,7 @@ func main() {
 	// Server mode — check for existing instance
 	pidPath := DefaultPIDPath()
 	if pid, running, _ := ReadPIDFile(pidPath); running {
-		log.Fatalf("eventrelay already running (pid %d). Use --status to check, or remove %s", pid, pidPath)
+		log.Fatalf("postDash already running (pid %d). Use --status to check, or remove %s", pid, pidPath)
 	}
 	if CheckPort(*port) {
 		log.Fatalf("port %d already in use", *port)
@@ -260,12 +260,12 @@ func main() {
 
 	if selfLog {
 		selfURL := fmt.Sprintf("http://127.0.0.1:%d/events", *port)
-		erClient := erclient.New(selfURL, "eventrelay")
+		erClient := erclient.New(selfURL, "postDash")
 		logHandler := erclient.NewSlogLogHandler(erClient, &erclient.SlogLogOptions{
-			Logger:    "eventrelay",
+			Logger:    "postDash",
 			AddSource: true,
 		})
-		// Tee: write to both stderr (text) and eventrelay /log endpoint
+		// Tee: write to both stderr (text) and postDash /log endpoint
 		stderrHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
 		slog.SetDefault(slog.New(teeHandler{stderrHandler, logHandler}))
 		defer erClient.Flush()
@@ -324,13 +324,13 @@ func runStatus(port int) {
 	pid, running, _ := ReadPIDFile(pidPath)
 
 	if running {
-		fmt.Printf("eventrelay is running (pid %d)\n", pid)
+		fmt.Printf("postDash is running (pid %d)\n", pid)
 		if CheckPort(port) {
 			fmt.Printf("  listening on port %d\n", port)
 			fmt.Printf("  dashboard: http://localhost:%d\n", port)
 		}
 	} else {
-		fmt.Println("eventrelay is not running")
+		fmt.Println("postDash is not running")
 		if CheckPort(port) {
 			fmt.Printf("  (but port %d is in use by another process)\n", port)
 		}
@@ -338,12 +338,12 @@ func runStatus(port int) {
 }
 
 func defaultConfigPath() string {
-	if dir := os.Getenv("EVENTRELAY_CONFIG_DIR"); dir != "" {
-		return dir + "/eventrelay.yaml"
+	if dir := os.Getenv("POSTDASH_CONFIG_DIR"); dir != "" {
+		return dir + "/postDash.yaml"
 	}
 	home, _ := os.UserHomeDir()
 	if home != "" {
-		return home + "/.config/eventrelay/eventrelay.yaml"
+		return home + "/.config/postDash/postDash.yaml"
 	}
 	return ""
 }

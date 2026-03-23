@@ -1,16 +1,16 @@
-# eventrelay
+# postDash
 
-[![CI](https://github.com/dmoose/eventrelay/actions/workflows/ci.yml/badge.svg)](https://github.com/dmoose/eventrelay/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/dmoose/eventrelay?sort=semver)](https://github.com/dmoose/eventrelay/releases)
-[![Go Reference](https://pkg.go.dev/badge/github.com/dmoose/eventrelay.svg)](https://pkg.go.dev/github.com/dmoose/eventrelay)
-[![Go Report Card](https://goreportcard.com/badge/github.com/dmoose/eventrelay)](https://goreportcard.com/report/github.com/dmoose/eventrelay)
+[![CI](https://github.com/dmoose/postDash/actions/workflows/ci.yml/badge.svg)](https://github.com/dmoose/postDash/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dmoose/postDash?sort=semver)](https://github.com/dmoose/postDash/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/dmoose/postDash.svg)](https://pkg.go.dev/github.com/dmoose/postDash)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dmoose/postDash)](https://goreportcard.com/report/github.com/dmoose/postDash)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A lightweight real-time event streaming service. Any tool that can POST JSON gets a live dashboard — browser UI, TUI, or both.
 
-## Why eventrelay?
+## Why postDash?
 
-Most observability tools are heavyweight — they need databases, collectors, dashboards, and configuration before you see anything. eventrelay is the opposite: a single binary that gives you a real-time event feed in seconds. It's designed for development workflows, CI pipelines, agent monitoring, and anywhere you want visibility without infrastructure.
+Most observability tools are heavyweight — they need databases, collectors, dashboards, and configuration before you see anything. postDash is the opposite: a single binary that gives you a real-time event feed in seconds. It's designed for development workflows, CI pipelines, agent monitoring, and anywhere you want visibility without infrastructure.
 
 - **Zero dependencies** — single Go binary, no database required
 - **Language-agnostic** — POST JSON from any language or tool, SDKs for Go, Python, and TypeScript
@@ -21,27 +21,27 @@ Most observability tools are heavyweight — they need databases, collectors, da
 ## Install
 
 ```bash
-go install github.com/dmoose/eventrelay@latest
+go install github.com/dmoose/postDash@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/dmoose/eventrelay.git
-cd eventrelay
+git clone https://github.com/dmoose/postDash.git
+cd postDash
 make build
 ```
 
 ## Quick Start
 
 ```bash
-eventrelay --port 6060
+postDash --port 6060
 ```
 
 Open http://localhost:6060 in a browser, then send events:
 
 ```bash
-eventrelay send -s myapp -a deploy -d '{"env":"prod"}'
+postDash send -s myapp -a deploy -d '{"env":"prod"}'
 ```
 
 Or with curl:
@@ -56,8 +56,8 @@ curl -X POST http://localhost:6060/events \
 Connect a terminal dashboard to a running server:
 
 ```bash
-eventrelay --tui
-eventrelay --tui --url http://remote-server:6060
+postDash --tui
+postDash --tui --url http://remote-server:6060
 ```
 
 Keys: `/` filter, `x` clear filter, `p` pause, `c` clear, `q` quit, `ctrl+c` force quit.
@@ -67,16 +67,16 @@ Keys: `/` filter, `x` clear filter, `p` pause, `c` clear, `q` quit, `ctrl+c` for
 Send events from scripts, cron jobs, or the terminal without curl:
 
 ```bash
-eventrelay send -s myapp -a deploy -l info -d '{"branch":"main"}'
-eventrelay send --source ci --action build_done --channel builds
-eventrelay send -s myapp -a crash -l error
+postDash send -s myapp -a deploy -l info -d '{"branch":"main"}'
+postDash send --source ci --action build_done --channel builds
+postDash send -s myapp -a crash -l error
 
 # Pipe raw JSON
-echo '{"source":"ci","action":"done"}' | eventrelay send --stdin
+echo '{"source":"ci","action":"done"}' | postDash send --stdin
 
 # With auth and custom server
-eventrelay send -s myapp -a test -t mysecret -p 8080
-eventrelay send -s myapp -a test --url http://remote:6060
+postDash send -s myapp -a test -t mysecret -p 8080
+postDash send -s myapp -a test --url http://remote:6060
 ```
 
 ## Event Schema
@@ -142,7 +142,7 @@ SSE and recent endpoints accept filter params: `?source=x&channel=y&level=error&
 ### Go
 
 ```go
-import "github.com/dmoose/eventrelay/client"
+import "github.com/dmoose/postDash/client"
 
 c := client.New("http://localhost:6060/events", "myapp")
 c.Emit("deploy", map[string]any{"env": "prod"})
@@ -168,7 +168,7 @@ See [client/README.md](client/README.md) for full Go SDK documentation.
 ### Python
 
 ```python
-from eventrelay import Client
+from postDash import Client
 
 er = Client("http://localhost:6060/events", "myapp")
 er.emit("deploy", {"env": "prod"})
@@ -185,7 +185,7 @@ See [sdks/python/README.md](sdks/python/README.md) for full Python SDK documenta
 ### TypeScript
 
 ```typescript
-import { Client } from "eventrelay";
+import { Client } from "postDash";
 
 const er = new Client("http://localhost:6060/events", "myapp");
 er.emit("deploy", { env: "prod" });
@@ -201,7 +201,7 @@ See [sdks/typescript/README.md](sdks/typescript/README.md) for full TypeScript S
 
 ## Pages (command portal)
 
-eventrelay can execute local commands and display their output as dashboard pages. This turns it into a portal for any CLI tool on the system — anything that can produce text, JSON, YAML, or markdown becomes a browser-accessible dashboard tab.
+postDash can execute local commands and display their output as dashboard pages. This turns it into a portal for any CLI tool on the system — anything that can produce text, JSON, YAML, or markdown becomes a browser-accessible dashboard tab.
 
 ### Configuration
 
@@ -209,7 +209,7 @@ Add a `pages` section to your config file:
 
 ```yaml
 server:
-  scripts_dir: /usr/local/share/eventrelay/scripts
+  scripts_dir: /usr/local/share/postDash/scripts
 
 pages:
   - name: System
@@ -239,7 +239,7 @@ pages:
 
 ### Bundled scripts
 
-The `scripts/` directory contains ready-to-use page scripts, installed to `$PREFIX/share/eventrelay/scripts/` by `make install`:
+The `scripts/` directory contains ready-to-use page scripts, installed to `$PREFIX/share/postDash/scripts/` by `make install`:
 
 | Script | Format | Description |
 |--------|--------|-------------|
@@ -272,7 +272,7 @@ Commands can only be registered in the config file — there is no API for addin
 
 ## Notifications
 
-Create `eventrelay.yaml` (see [eventrelay.example.yaml](eventrelay.example.yaml)):
+Create `postDash.yaml` (see [postDash.example.yaml](postDash.example.yaml)):
 
 ```yaml
 # Server settings (flags override these)
@@ -281,7 +281,7 @@ server:
   bind: 127.0.0.1
   # token: mysecret
   buffer: 1000
-  # log: /var/log/eventrelay/events.jsonl
+  # log: /var/log/postDash/events.jsonl
 
 notify:
   - name: errors to slack
@@ -307,13 +307,13 @@ notify:
 ```
 
 ```bash
-eventrelay --config eventrelay.yaml
+postDash --config postDash.yaml
 ```
 
 ## Network Mode
 
 ```bash
-eventrelay --bind 0.0.0.0 --token mysecret
+postDash --bind 0.0.0.0 --token mysecret
 ```
 
 With `--token`, POST requests require `Authorization: Bearer mysecret`.
@@ -329,7 +329,7 @@ With `--token`, POST requests require `Authorization: Bearer mysecret`.
 --config string  notification config file
 --tui            connect as TUI dashboard client
 --url string     server URL for TUI mode
---status         check if eventrelay is running
+--status         check if postDash is running
 --version        print version and exit
 ```
 
@@ -348,11 +348,11 @@ make uninstall-service  # stop and remove service
 
 After pulling new code, run `make upgrade`. This stops the running service, installs the new binary, and restarts via launchd. The service has `KeepAlive` enabled, so launchd handles the restart automatically if the process exits.
 
-If you installed via `go install` without the launchd service, stop the running process (`kill $(cat ~/.config/eventrelay/eventrelay.pid)`), then `go install github.com/dmoose/eventrelay@latest` and start again.
+If you installed via `go install` without the launchd service, stop the running process (`kill $(cat ~/.config/postDash/postDash.pid)`), then `go install github.com/dmoose/postDash@latest` and start again.
 
 ## Network / Intranet Deployment
 
-eventrelay has real value as an intranet dashboard — a single URL for your team to see events, system status, and tool output. **Do not expose it to the public internet.**
+postDash has real value as an intranet dashboard — a single URL for your team to see events, system status, and tool output. **Do not expose it to the public internet.**
 
 ### Docker + Caddy
 
@@ -364,20 +364,20 @@ docker compose up -d
 ```
 
 This gives you:
-- eventrelay on port 6060 (internal)
+- postDash on port 6060 (internal)
 - Caddy reverse proxy with automatic TLS on ports 80/443
 - Basic auth (optional, see `deploy/Caddyfile`)
 
-Configure the domain in `deploy/Caddyfile` and event token in `deploy/eventrelay.yaml`.
+Configure the domain in `deploy/Caddyfile` and event token in `deploy/postDash.yaml`.
 
 ### Recommended network architecture
 
 ```
-SDKs/agents → eventrelay:6060 (Bearer token auth)
-Browsers    → Caddy (TLS + basic auth) → eventrelay:6060
+SDKs/agents → postDash:6060 (Bearer token auth)
+Browsers    → Caddy (TLS + basic auth) → postDash:6060
 ```
 
-- eventrelay handles SDK authentication via `--token`
+- postDash handles SDK authentication via `--token`
 - Caddy handles browser authentication via basic auth
 - This separation means SDKs use token auth (no browser needed) while the dashboard is password-protected
 
@@ -385,7 +385,7 @@ See `deploy/Caddyfile` for examples including protecting only the dashboard whil
 
 ## Security
 
-eventrelay is designed for localhost and trusted networks. See [SECURITY.md](SECURITY.md) for the full threat model covering:
+postDash is designed for localhost and trusted networks. See [SECURITY.md](SECURITY.md) for the full threat model covering:
 
 - On-device security (localhost default)
 - Network deployment considerations

@@ -1,6 +1,6 @@
-# eventrelay Python SDK
+# postDash Python SDK
 
-Python client for sending events to an [eventrelay](https://github.com/dmoose/eventrelay) server.
+Python client for sending events to an [postDash](https://github.com/dmoose/postDash) server.
 
 ## Install
 
@@ -11,7 +11,7 @@ pip install ./sdks/python
 ## Usage
 
 ```python
-from eventrelay import Client
+from postDash import Client
 
 er = Client("http://localhost:6060/events", "myapp")
 
@@ -44,8 +44,8 @@ When the URL is empty, all operations silently no-op:
 
 ```python
 import os
-er = Client(os.environ.get("EVENTRELAY_URL", ""), "myapp")
-er.emit("startup")  # safe even if EVENTRELAY_URL is unset
+er = Client(os.environ.get("POSTDASH_URL", ""), "myapp")
+er.emit("startup")  # safe even if POSTDASH_URL is unset
 ```
 
 ## Requirements

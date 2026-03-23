@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// runSend handles the "eventrelay send" subcommand.
+// runSend handles the "postDash send" subcommand.
 func runSend(args []string) {
 	fs := flag.NewFlagSet("send", flag.ExitOnError)
 	source := fs.String("source", "", "event source (required)")
@@ -33,12 +33,12 @@ func runSend(args []string) {
 	stdin := fs.Bool("stdin", false, "read JSON event from stdin")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: eventrelay send [flags]\n\nSend an event to a running eventrelay server.\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "Usage: postDash send [flags]\n\nSend an event to a running postDash server.\n\nFlags:\n")
 		fs.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  eventrelay send -s myapp -a deploy -d '{\"env\":\"prod\"}'\n")
-		fmt.Fprintf(os.Stderr, "  eventrelay send --source ci --action build_done --level info\n")
-		fmt.Fprintf(os.Stderr, "  echo '{\"source\":\"ci\",\"action\":\"done\"}' | eventrelay send --stdin\n")
+		fmt.Fprintf(os.Stderr, "  postDash send -s myapp -a deploy -d '{\"env\":\"prod\"}'\n")
+		fmt.Fprintf(os.Stderr, "  postDash send --source ci --action build_done --level info\n")
+		fmt.Fprintf(os.Stderr, "  echo '{\"source\":\"ci\",\"action\":\"done\"}' | postDash send --stdin\n")
 	}
 
 	if err := fs.Parse(args); err != nil {

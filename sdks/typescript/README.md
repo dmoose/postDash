@@ -1,6 +1,6 @@
-# eventrelay TypeScript SDK
+# postDash TypeScript SDK
 
-TypeScript/JavaScript client for sending events to an [eventrelay](https://github.com/dmoose/eventrelay) server.
+TypeScript/JavaScript client for sending events to an [postDash](https://github.com/dmoose/postDash) server.
 
 ## Install
 
@@ -11,7 +11,7 @@ npm install ./sdks/typescript
 ## Usage
 
 ```typescript
-import { Client } from "eventrelay";
+import { Client } from "postDash";
 
 const er = new Client("http://localhost:6060/events", "myapp");
 
@@ -43,8 +43,8 @@ done({ rows: result.length });
 When the URL is empty, all operations silently no-op:
 
 ```typescript
-const er = new Client(process.env.EVENTRELAY_URL ?? "", "myapp");
-er.emit("startup"); // safe even if EVENTRELAY_URL is unset
+const er = new Client(process.env.POSTDASH_URL ?? "", "myapp");
+er.emit("startup"); // safe even if POSTDASH_URL is unset
 ```
 
 ## Requirements

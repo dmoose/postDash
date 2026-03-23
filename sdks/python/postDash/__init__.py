@@ -1,4 +1,4 @@
-"""eventrelay - Python SDK for sending events to an eventrelay server."""
+"""postDash - Python SDK for sending events to an postDash server."""
 
 from .client import Client, Event
 

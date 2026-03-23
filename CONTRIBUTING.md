@@ -1,12 +1,12 @@
-# Contributing to eventrelay
+# Contributing to postDash
 
 Thanks for your interest in contributing! Here's how to get started.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/dmoose/eventrelay.git
-cd eventrelay
+git clone https://github.com/dmoose/postDash.git
+cd postDash
 make build    # Build the binary
 make test     # Run tests with race detector
 ```

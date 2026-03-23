@@ -1,12 +1,12 @@
 # Docker deployment config
-# Mount custom scripts to /usr/local/share/eventrelay/custom-scripts/
+# Mount custom scripts to /usr/local/share/postDash/custom-scripts/
 
 server:
   port: 6060
   bind: 0.0.0.0
   # token: change-me-in-production
   buffer: 1000
-  scripts_dir: /usr/local/share/eventrelay/scripts
+  scripts_dir: /usr/local/share/postDash/scripts
 
 pages:
   - name: System

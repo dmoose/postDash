@@ -1,5 +1,5 @@
-# eventrelay configuration
-# Usage: eventrelay --config eventrelay.yaml
+# postDash configuration
+# Usage: postDash --config postDash.yaml
 
 # Server settings (flags override these)
 server:
@@ -7,8 +7,8 @@ server:
   bind: 127.0.0.1
   # token: mysecret
   buffer: 1000
-  # log: /var/log/eventrelay/events.jsonl
-  # scripts_dir: /usr/local/share/eventrelay/scripts
+  # log: /var/log/postDash/events.jsonl
+  # scripts_dir: /usr/local/share/postDash/scripts
 
 pages:
   # Register local commands as dashboard pages.

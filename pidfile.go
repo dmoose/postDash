@@ -10,23 +10,23 @@ import (
 	"syscall"
 )
 
-const pidFileName = "eventrelay.pid"
+const pidFileName = "postDash.pid"
 
-// PIDFile manages a PID file for the eventrelay server.
+// PIDFile manages a PID file for the postDash server.
 type PIDFile struct {
 	path string
 }
 
 // DefaultPIDPath returns the default PID file location.
 func DefaultPIDPath() string {
-	if dir := os.Getenv("EVENTRELAY_CONFIG_DIR"); dir != "" {
+	if dir := os.Getenv("POSTDASH_CONFIG_DIR"); dir != "" {
 		return filepath.Join(dir, pidFileName)
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return pidFileName
 	}
-	return filepath.Join(home, ".config", "eventrelay", pidFileName)
+	return filepath.Join(home, ".config", "postDash", pidFileName)
 }
 
 // WritePIDFile creates a PID file. Returns an error if another instance is running.
@@ -39,7 +39,7 @@ func WritePIDFile(path string) (*PIDFile, error) {
 		if len(parts) >= 1 {
 			if pid, err := strconv.Atoi(parts[0]); err == nil {
 				if processExists(pid) {
-					return nil, fmt.Errorf("eventrelay already running (pid %d, pidfile %s)", pid, path)
+					return nil, fmt.Errorf("postDash already running (pid %d, pidfile %s)", pid, path)
 				}
 			}
 		}

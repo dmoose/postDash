@@ -9,7 +9,7 @@ import (
 )
 
 // SlogHandler implements slog.Handler, sending structured log records as events.
-// Use with slog.New(eventrelay.NewSlogHandler(client, "logs")) to route all
+// Use with slog.New(postDash.NewSlogHandler(client, "logs")) to route all
 // structured logging to the event relay as events on a channel.
 type SlogHandler struct {
 	client  *Client
@@ -71,8 +71,8 @@ func (h *SlogHandler) WithGroup(name string) slog.Handler {
 
 // SlogLogHandler implements slog.Handler, sending records to the /log endpoint
 // as structured log entries (message, level, logger, fields, caller).
-// Use with slog.New(eventrelay.NewSlogLogHandler(client)) for first-class
-// log integration with the eventrelay Logs tab.
+// Use with slog.New(postDash.NewSlogLogHandler(client)) for first-class
+// log integration with the postDash Logs tab.
 type SlogLogHandler struct {
 	client *Client
 	logger string // logger name (defaults to client source)

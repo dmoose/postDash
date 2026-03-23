@@ -1,4 +1,4 @@
-"""Fire-and-forget event client for eventrelay."""
+"""Fire-and-forget event client for postDash."""
 
 from __future__ import annotations
 
@@ -32,13 +32,13 @@ class Event:
 
 
 class Client:
-    """Sends events to an eventrelay server.
+    """Sends events to an postDash server.
 
     All methods are thread-safe. If url is empty, all operations are no-ops.
 
     Usage::
 
-        from eventrelay import Client
+        from postDash import Client
 
         er = Client("http://localhost:6060/events", "myapp")
         er.emit("deploy", {"env": "prod"})

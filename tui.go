@@ -225,7 +225,7 @@ func (m tuiModel) View() string {
 	}
 
 	// Line 1: title + stats
-	header := titleStyle.Render("eventrelay")
+	header := titleStyle.Render("postDash")
 	header += statsStyle.Render(fmt.Sprintf(
 		"events: %d  rate: %.1f/s  clients: %d",
 		m.stats.TotalEvents, m.stats.RecentRate, m.stats.ClientCount,

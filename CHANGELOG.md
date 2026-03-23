@@ -1,5 +1,5 @@
 # Changelog
-All notable changes to eventrelay are documented in this file.
+All notable changes to postDash are documented in this file.
 ## Unreleased
 No changes yet.
 ## v1.0.0
@@ -11,7 +11,7 @@ No changes yet.
 - Markdown renderer with tables, blockquotes, ordered lists, horizontal rules, code blocks
 - **Docker + Caddy deployment** with docker-compose.yml and Caddyfile (TLS + basic auth)
 - Server settings in YAML config (`server.port`, `bind`, `token`, `buffer`, `log`, `scripts_dir`)
-- `eventrelay send` CLI command for emitting events from scripts and the terminal
+- `postDash send` CLI command for emitting events from scripts and the terminal
 - `--version` flag and `version` subcommand with build-time version embedding
 - `POST /events/batch` endpoint for submitting multiple events in a single request
 - `GET /healthz` endpoint returning `{"ok":true,"version":"..."}`

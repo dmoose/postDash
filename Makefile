@@ -1,6 +1,6 @@
 PREFIX ?= /usr/local
-BINARY = eventrelay
-PLIST = com.eventrelay.plist
+BINARY = postDash
+PLIST = com.postDash.plist
 LAUNCH_DIR = $(HOME)/Library/LaunchAgents
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
@@ -15,23 +15,23 @@ build: ## Build the binary
 install: build ## Install binary and scripts to $PREFIX
 	install -d $(PREFIX)/bin
 	install -m 755 $(BINARY) $(PREFIX)/bin/
-	install -d $(PREFIX)/share/eventrelay/scripts
-	install -m 755 scripts/er-* $(PREFIX)/share/eventrelay/scripts/
-	install -d $(HOME)/.config/eventrelay
+	install -d $(PREFIX)/share/postDash/scripts
+	install -m 755 scripts/er-* $(PREFIX)/share/postDash/scripts/
+	install -d $(HOME)/.config/postDash
 	@echo "Installed $(BINARY) to $(PREFIX)/bin/"
-	@echo "Scripts: $(PREFIX)/share/eventrelay/scripts/"
-	@echo "Config: ~/.config/eventrelay/eventrelay.yaml"
+	@echo "Scripts: $(PREFIX)/share/postDash/scripts/"
+	@echo "Config: ~/.config/postDash/postDash.yaml"
 	@echo "Run 'make install-service' to start on login"
 
 uninstall: uninstall-service ## Remove installed binary and scripts
 	rm -f $(PREFIX)/bin/$(BINARY)
-	rm -rf $(PREFIX)/share/eventrelay
+	rm -rf $(PREFIX)/share/postDash
 
 install-service: install ## Install and start macOS launchd service
 	install -d $(LAUNCH_DIR)
-	sed 's|/usr/local/bin/eventrelay|$(PREFIX)/bin/eventrelay|g' $(PLIST) > $(LAUNCH_DIR)/$(PLIST)
+	sed 's|/usr/local/bin/postDash|$(PREFIX)/bin/postDash|g' $(PLIST) > $(LAUNCH_DIR)/$(PLIST)
 	launchctl load $(LAUNCH_DIR)/$(PLIST)
-	@echo "eventrelay service installed and started"
+	@echo "postDash service installed and started"
 	@echo "Dashboard: http://localhost:6060"
 
 uninstall-service: ## Stop and remove macOS launchd service
@@ -41,23 +41,23 @@ uninstall-service: ## Stop and remove macOS launchd service
 restart-service: ## Restart the launchd service
 	-launchctl unload $(LAUNCH_DIR)/$(PLIST) 2>/dev/null
 	launchctl load $(LAUNCH_DIR)/$(PLIST)
-	@echo "eventrelay restarted"
+	@echo "postDash restarted"
 
 upgrade: build ## Build, install, and restart the running service
-	@echo "Stopping eventrelay..."
+	@echo "Stopping postDash..."
 	-launchctl unload $(LAUNCH_DIR)/$(PLIST) 2>/dev/null
 	install -m 755 $(BINARY) $(PREFIX)/bin/
-	install -d $(PREFIX)/share/eventrelay/scripts
-	install -m 755 scripts/er-* $(PREFIX)/share/eventrelay/scripts/
+	install -d $(PREFIX)/share/postDash/scripts
+	install -m 755 scripts/er-* $(PREFIX)/share/postDash/scripts/
 	@if [ -f $(LAUNCH_DIR)/$(PLIST) ]; then \
 		launchctl load $(LAUNCH_DIR)/$(PLIST); \
-		echo "eventrelay upgraded and restarted ($(VERSION))"; \
+		echo "postDash upgraded and restarted ($(VERSION))"; \
 	else \
-		echo "eventrelay upgraded ($(VERSION)) — no service to restart, run manually or 'make install-service'"; \
+		echo "postDash upgraded ($(VERSION)) — no service to restart, run manually or 'make install-service'"; \
 	fi
 
-status: ## Check if eventrelay is running
-	@$(PREFIX)/bin/$(BINARY) --status 2>/dev/null || ./$(BINARY) --status 2>/dev/null || echo "eventrelay not installed"
+status: ## Check if postDash is running
+	@$(PREFIX)/bin/$(BINARY) --status 2>/dev/null || ./$(BINARY) --status 2>/dev/null || echo "postDash not installed"
 
 test: ## Run all tests with race detector
 	go test -race ./...

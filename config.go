@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config is the eventrelay configuration file.
+// Config is the postDash configuration file.
 type Config struct {
 	Server *ServerConf  `yaml:"server,omitempty"`
 	Pages  []PageConf   `yaml:"pages,omitempty"`
@@ -23,7 +23,7 @@ type ServerConf struct {
 	Buffer      int    `yaml:"buffer,omitempty"`        // ring buffer size
 	LogBuffer   int    `yaml:"log_buffer,omitempty"`    // ring buffer size for logs (default: 500)
 	LogMinLevel string `yaml:"log_min_level,omitempty"` // minimum log level to accept: debug|info|warn|error (default: debug)
-	SelfLog     *bool  `yaml:"self_log,omitempty"`      // log eventrelay internals to its own /log endpoint (default: true)
+	SelfLog     *bool  `yaml:"self_log,omitempty"`      // log postDash internals to its own /log endpoint (default: true)
 	Log         string `yaml:"log,omitempty"`           // JSONL log file path
 	ScriptsDir  string `yaml:"scripts_dir,omitempty"`   // directory for page scripts
 }

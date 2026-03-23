@@ -1,17 +1,17 @@
-# eventrelay Go SDK
+# postDash Go SDK
 
-Go client for sending events to an [eventrelay](https://github.com/dmoose/eventrelay) server.
+Go client for sending events to an [postDash](https://github.com/dmoose/postDash) server.
 
 ## Install
 
 ```bash
-go get github.com/dmoose/eventrelay/client
+go get github.com/dmoose/postDash/client
 ```
 
 ## Usage
 
 ```go
-import "github.com/dmoose/eventrelay/client"
+import "github.com/dmoose/postDash/client"
 
 c := client.New("http://localhost:6060/events", "myapp")
 
@@ -40,7 +40,7 @@ done(map[string]any{"rows": len(rows)})
 
 ### slog Integration
 
-Route Go structured logging to eventrelay:
+Route Go structured logging to postDash:
 
 ```go
 handler := client.NewSlogHandler(c, "logs")
@@ -53,6 +53,6 @@ logger.Info("request handled", "path", "/api/users", "status", 200)
 When the URL is empty, all operations silently no-op. This lets you embed instrumentation without conditional checks:
 
 ```go
-c := client.New(os.Getenv("EVENTRELAY_URL"), "myapp")
-c.Emit("startup", nil) // safe even if EVENTRELAY_URL is unset
+c := client.New(os.Getenv("POSTDASH_URL"), "myapp")
+c.Emit("startup", nil) // safe even if POSTDASH_URL is unset
 ```

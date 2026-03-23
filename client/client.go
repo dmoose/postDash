@@ -1,4 +1,4 @@
-// Package client provides a Go SDK for sending events to an eventrelay server.
+// Package client provides a Go SDK for sending events to an postDash server.
 package client
 
 import (
@@ -22,7 +22,7 @@ type Event struct {
 	TS         time.Time      `json:"ts"`
 }
 
-// Client sends events to an eventrelay server.
+// Client sends events to an postDash server.
 // All methods are safe for concurrent use.
 // If URL is empty, all operations are no-ops.
 type Client struct {

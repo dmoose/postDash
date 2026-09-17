@@ -18,9 +18,14 @@ install: build ## Install binary and scripts to $PREFIX
 	install -d $(PREFIX)/share/postDash/scripts
 	install -m 755 scripts/er-* $(PREFIX)/share/postDash/scripts/
 	install -d $(HOME)/.config/postDash
+	@if [ ! -f $(HOME)/.config/postDash/postDash.yaml ]; then \
+		sed 's|# scripts_dir:.*|scripts_dir: $(PREFIX)/share/postDash/scripts|' postDash.example.yaml > $(HOME)/.config/postDash/postDash.yaml; \
+		echo "Created default config: ~/.config/postDash/postDash.yaml"; \
+	else \
+		echo "Config exists: ~/.config/postDash/postDash.yaml (not overwritten)"; \
+	fi
 	@echo "Installed $(BINARY) to $(PREFIX)/bin/"
 	@echo "Scripts: $(PREFIX)/share/postDash/scripts/"
-	@echo "Config: ~/.config/postDash/postDash.yaml"
 	@echo "Run 'make install-service' to start on login"
 
 uninstall: uninstall-service ## Remove installed binary and scripts

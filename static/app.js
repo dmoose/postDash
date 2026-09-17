@@ -37,7 +37,7 @@ const seen = { source: new Set(), channel: new Set(), action: new Set(), level: 
 function switchView(view, slug) {
   currentView = view;
   topBar.querySelectorAll('.nav-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.view === view && t.dataset.slug === (slug || ''));
+    t.classList.toggle('active', t.dataset.view === view && (t.dataset.slug || '') === (slug || ''));
   });
 
   eventsView.style.display = view === 'events' ? 'block' : 'none';
@@ -109,11 +109,12 @@ function renderPage(name, result) {
     <div class="page-header">
       <span class="page-title">${esc(name)}</span>
       <span class="page-meta">updated ${updated}</span>
-      <button class="page-refresh" onclick="loadPage('${currentView}', '${esc(name)}')">Refresh</button>
+      <button class="page-refresh" id="page-refresh-btn">Refresh</button>
     </div>
     ${errorHtml}
     ${contentHtml}
   `;
+  document.getElementById('page-refresh-btn').onclick = () => loadPage(currentView, name);
 }
 
 function syntaxHighlightJSON(raw) {
@@ -221,7 +222,7 @@ function loadNav() {
         topBar.appendChild(tab);
       }
     })
-    .catch(() => {});
+    .catch(err => console.warn('Failed to load pages:', err));
 }
 
 // Wire up static nav tabs
@@ -395,7 +396,7 @@ function pollSparkline() {
   fetch('/events/rate?buckets=30&minutes=5')
     .then(r => r.json())
     .then(data => { if (data && data.length) renderSparkline(data); })
-    .catch(() => {});
+    .catch(err => console.warn('Failed to poll sparkline:', err));
 }
 
 // --- Stats ---
@@ -425,7 +426,7 @@ function pollStats() {
         sSources.appendChild(tag);
       }
     })
-    .catch(() => {});
+    .catch(err => console.warn('Failed to poll stats:', err));
 }
 
 // --- Controls ---
@@ -584,7 +585,7 @@ function pollLogSparkline() {
   fetch('/logs/rate?buckets=30&minutes=5')
     .then(r => r.json())
     .then(data => { if (data && data.length) renderLogSparkline(data); })
-    .catch(() => {});
+    .catch(err => console.warn('Failed to poll log sparkline:', err));
 }
 
 function pollLogStats() {
@@ -599,7 +600,7 @@ function pollLogStats() {
       lsErrorsWrap.style.display = errors > 0 ? '' : 'none';
       if (errors > 0) lsErrors.textContent = errors + ' error' + (errors !== 1 ? 's' : '');
     })
-    .catch(() => {});
+    .catch(err => console.warn('Failed to poll log stats:', err));
 }
 
 // --- Export ---
@@ -699,7 +700,7 @@ loadNav();
 fetch('/logs/recent?n=50')
   .then(r => r.json())
   .then(entries => { if (entries && entries.length) entries.forEach(addLog); })
-  .catch(() => {});
+  .catch(err => console.warn('Failed to load recent logs:', err));
 
 fetch('/events/recent?n=50')
   .then(r => r.json())
@@ -715,7 +716,8 @@ fetch('/events/recent?n=50')
     setInterval(pollLogStats, 3000);
     setInterval(pollLogSparkline, 5000);
   })
-  .catch(() => {
+  .catch(err => {
+    console.warn('Failed to load recent events:', err);
     connectSSE();
     setInterval(pollStats, 3000);
     setInterval(pollSparkline, 5000);

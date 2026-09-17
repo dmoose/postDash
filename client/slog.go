@@ -10,7 +10,7 @@ import (
 
 // SlogHandler implements slog.Handler, sending structured log records as events.
 // Use with slog.New(postDash.NewSlogHandler(client, "logs")) to route all
-// structured logging to the event relay as events on a channel.
+// structured logging to postDash as events on a channel.
 type SlogHandler struct {
 	client  *Client
 	channel string
